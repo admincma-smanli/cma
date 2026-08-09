@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Monitor Agenda — SMAN 5 Sarolangun</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html,body{height:100%;overflow:hidden}
+    body{font-family:'Plus Jakarta Sans',sans-serif;background:#0D1B2A;color:white;display:flex;flex-direction:column}
+
+    /* HEADER */
+    .hdr{flex-shrink:0;background:#111E30;border-bottom:2px solid #E07020;padding:8px 20px;display:flex;align-items:center;justify-content:space-between;height:54px}
+    .logo-box{width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,#ffb347,#E07020,#2E7D32,#1A3A5C);padding:2px;flex-shrink:0}
+    .logo-in{width:100%;height:100%;border-radius:7px;background:white;overflow:hidden;display:flex;align-items:center;justify-content:center}
+    .logo-in img{width:100%;height:100%;object-fit:contain}
+    .hdr-kiri{display:flex;align-items:center;gap:10px}
+    .hdr-nama{font-size:14px;font-weight:700}
+    .hdr-sub{font-size:10px;color:#607D8B}
+    .hdr-mid{font-size:12px;font-weight:700;color:#E07020;letter-spacing:2px;text-transform:uppercase}
+    .jam{font-family:'DM Mono',monospace;font-size:24px;font-weight:500;text-align:right;line-height:1}
+    .tgl{font-size:10px;color:#607D8B;text-align:right;margin-top:2px}
+
+    /* SUMBAR */
+    .sumbar{flex-shrink:0;background:#0F1C2C;border-bottom:1px solid #1A2E44;padding:5px 20px;display:flex;align-items:center;gap:14px;height:36px}
+    .si{display:flex;align-items:center;gap:5px}
+    .sdot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+    .slbl{font-size:11px;color:#607D8B}
+    .sval{font-size:17px;font-weight:700;font-family:'DM Mono',monospace;margin-left:2px}
+    .sdiv{width:1px;height:20px;background:#1A2E44}
+    .prog-w{flex:1;display:flex;align-items:center;gap:8px}
+    .prog-bg{flex:1;height:5px;background:#1A2E44;border-radius:3px;overflow:hidden}
+    .prog-fill{height:100%;background:#43A047;border-radius:3px;transition:width 1s}
+    .prog-pct{font-family:'DM Mono',monospace;font-size:13px;font-weight:500;color:#43A047;min-width:36px;text-align:right}
+    .hari-chip{font-size:11px;color:#E07020;font-weight:700;background:rgba(224,112,32,.15);padding:3px 10px;border-radius:20px}
+
+    /* MAIN */
+    .main{flex:1;display:grid;grid-template-columns:1fr 240px;overflow:hidden}
+
+    /* PANEL KIRI */
+    .pleft{display:flex;flex-direction:column;padding:10px 14px;gap:10px;overflow:hidden}
+
+    /* GRID KELAS */
+    .kelas-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;flex-shrink:0}
+    .kartu{border-radius:9px;padding:10px 12px;position:relative;overflow:hidden;transition:border-color .3s}
+    .kartu::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+    .kartu.sudah{background:#162A1E;border:1px solid #2E6B34}
+    .kartu.sudah::before{background:#43A047}
+    .kartu.parsial{background:#1A1E0A;border:1px solid #5A6B1A}
+    .kartu.parsial::before{background:#F9A825}
+    .kartu.belum{background:#2A1616;border:1px solid #6B2E2E;animation:denyut 2.5s ease-in-out infinite}
+    .kartu.belum::before{background:#E53935}
+    @keyframes denyut{0%,100%{border-color:#6B2E2E}50%{border-color:#E53935}}
+    .k-top{display:flex;justify-content:space-between;align-items:flex-start}
+    .k-nama{font-size:16px;font-weight:700}
+    .k-ikon{font-size:13px}
+    .k-jam-info{font-size:9px;margin:2px 0;font-weight:600}
+    .k-mapel-aktif{font-size:13px;font-weight:700;color:white;margin-bottom:2px}
+    .k-guru{font-size:10px;color:#90A4AE;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:5px}
+    .mapel-row{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:6px}
+    .mc{font-size:9px;font-weight:700;padding:2px 5px;border-radius:4px}
+    .mc-ok{background:rgba(67,160,71,.25);color:#81C784}
+    .mc-no{background:rgba(229,57,53,.2);color:#EF9A9A}
+    .mc-aktif{outline:1px solid #F9A825}
+    .k-pb{height:3px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden;margin-bottom:4px}
+    .k-pbf{height:100%;border-radius:2px}
+    .k-bot{display:flex;justify-content:space-between;align-items:center}
+    .k-sesi{font-size:9px;color:#546E7A}
+    .k-pct{font-size:11px;font-weight:700;font-family:'DM Mono',monospace}
+
+    /* SLIDER */
+    .slider-sec{flex:1;display:flex;flex-direction:column;min-height:0}
+    .slider-lbl{font-size:10px;font-weight:700;color:#546E7A;text-transform:uppercase;letter-spacing:1px;flex-shrink:0;margin-bottom:5px}
+    .slider-outer{flex:1;position:relative;border-radius:10px;overflow:hidden;background:#0F1C2C;min-height:0}
+    .slider-track{display:flex;height:100%;transition:transform .8s cubic-bezier(.4,0,.2,1)}
+    .slider-slide{min-width:100%;height:100%;flex-shrink:0;position:relative}
+    .slider-slide img{width:100%;height:100%;object-fit:cover;display:block}
+    .slider-cap{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.7));padding:16px 14px 8px}
+    .slider-cap-txt{font-size:12px;font-weight:500;color:white}
+    .slider-dots{display:flex;justify-content:center;gap:5px;padding:4px 0;flex-shrink:0}
+    .dot{width:6px;height:6px;border-radius:50%;background:#1A2E44;cursor:pointer;transition:background .3s}
+    .dot.on{background:#E07020}
+
+    /* PANEL KANAN */
+    .pright{background:#0F1C2C;border-left:1px solid #1A2E44;padding:10px 12px;display:flex;flex-direction:column;gap:10px;overflow-y:auto}
+    .sec-lbl{font-size:10px;font-weight:700;color:#546E7A;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+    .bar-item{display:flex;align-items:center;gap:6px;margin-bottom:4px}
+    .bar-lbl{font-size:10px;font-weight:500;color:#90A4AE;min-width:34px;font-family:'DM Mono',monospace}
+    .bar-bg{flex:1;height:14px;background:#1A2E44;border-radius:3px;overflow:hidden}
+    .bar-fill{height:100%;border-radius:3px;display:flex;align-items:center;justify-content:flex-end;padding-right:3px;min-width:3px}
+    .bar-txt{font-size:8px;font-weight:700;color:rgba(255,255,255,.9)}
+    .bar-pct{font-size:9px;font-weight:500;font-family:'DM Mono',monospace;min-width:26px;text-align:right}
+    .div{border-top:1px solid #1A2E44;flex-shrink:0}
+    .guru-item{display:flex;align-items:center;gap:5px;padding:4px 0;border-bottom:1px solid #1A2E44}
+    .guru-item:last-child{border-bottom:none}
+    .gkode{font-family:'DM Mono',monospace;font-size:9px;font-weight:500;background:#1A3A5C;color:#90CAF9;padding:1px 4px;border-radius:3px;flex-shrink:0;min-width:24px;text-align:center}
+    .gnama{font-size:10px;color:#CFD8DC;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .gpb{width:40px;height:3px;background:#1A2E44;border-radius:2px;overflow:hidden;flex-shrink:0}
+    .gpbf{height:100%;border-radius:2px}
+    .gpct{font-size:9px;font-family:'DM Mono',monospace;min-width:26px;text-align:right;flex-shrink:0}
+
+    /* KEHADIRAN SISWA */
+    .hadir-item { display:flex; align-items:center; gap:8px; padding:5px 8px; background:rgba(255,255,255,0.04); border-radius:7px; border:1px solid rgba(255,255,255,0.06); flex-shrink:0; }
+    .hadir-kelas { font-size:11px; font-weight:700; color:white; min-width:36px; font-family:'DM Mono',monospace; }
+    .hadir-pb-bg { flex:1; height:5px; background:rgba(255,255,255,0.1); border-radius:3px; overflow:hidden; }
+    .hadir-pb-fill { height:100%; border-radius:3px; transition:width 0.5s; }
+    .hadir-angka { font-size:10px; font-family:'DM Mono',monospace; color:#90A4AE; min-width:28px; text-align:right; flex-shrink:0; }
+    .hadir-badge { font-size:9px; font-weight:700; padding:1px 5px; border-radius:4px; flex-shrink:0; }
+
+    /* TICKER */
+    .ticker{flex-shrink:0;background:#B85510;padding:4px 16px;font-size:11px;font-weight:600;color:white;display:flex;align-items:center;gap:8px;height:24px}
+    .ticker-lbl{background:white;color:#B85510;padding:0 6px;border-radius:5px;font-size:9px;font-weight:800;flex-shrink:0}
+    .ticker-scroll{flex:1;overflow:hidden;white-space:nowrap}
+    .ticker-txt{display:inline-block;animation:scroll 35s linear infinite}
+    .bell-notif{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#B85510,#E07020);color:white;padding:12px 36px;border-radius:14px;font-size:18px;font-weight:700;z-index:9999;animation:fadeNotif 5s forwards;pointer-events:none;display:flex;align-items:center;gap:10px;box-shadow:0 8px 32px rgba(0,0,0,0.4);white-space:nowrap;letter-spacing:0.3px}
+    @keyframes fadeNotif{0%{opacity:0;bottom:20px}10%{opacity:1;bottom:30px}75%{opacity:1;bottom:30px}100%{opacity:0;bottom:40px}}
+    @keyframes fadeNotif{0%{opacity:0;top:70px}10%{opacity:1;top:60px}80%{opacity:1}100%{opacity:0}}
+    @keyframes scroll{from{transform:translateX(100%)}to{transform:translateX(-100%)}}
+
+    /* LOADING */
+    .loading{position:fixed;inset:0;background:#0D1B2A;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;z-index:999}
+    .spin{width:40px;height:40px;border:3px solid #1A2E44;border-top-color:#E07020;border-radius:50%;animation:putar .8s linear infinite}
+    @keyframes putar{to{transform:rotate(360deg)}}
+  </style>
+</head>
+<body>
+
+<div class="loading" id="loading">
+  <div class="spin"></div>
+  <p style="font-size:12px;color:#607D8B">Memuat data...</p>
+</div>
+
+<!-- OVERLAY AKTIVASI BELL -->
+<div id="bell-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,0.85);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9998;gap:16px;">
+  <div style="font-size:48px">🔔</div>
+  <div style="font-size:18px;font-weight:700;color:white">Sistem Bell Otomatis</div>
+  <div style="font-size:13px;color:#90A4AE;text-align:center;max-width:320px;line-height:1.6">
+    Klik tombol di bawah untuk mengaktifkan bell otomatis.<br>
+    Cukup dilakukan sekali saat pertama buka halaman.
+  </div>
+  <button onclick="aktivasiBell()" style="background:#E07020;color:white;border:none;border-radius:14px;padding:14px 40px;font-size:16px;font-weight:700;cursor:pointer;font-family:Plus Jakarta Sans,sans-serif;box-shadow:0 4px 20px rgba(224,112,32,0.4);margin-top:8px;">
+    🔔 Aktifkan Bell Sekolah
+  </button>
+  <div style="font-size:11px;color:#546E7A">SMAN 5 Sarolangun · Egenda Kelas</div>
+</div>
+
+<!-- INDIKATOR BELL AKTIF -->
+<div id="bell-status" onclick="toggleBellTest()" style="position:fixed;bottom:28px;left:16px;font-size:10px;font-weight:600;padding:2px 8px;border-radius:8px;z-index:100;display:none;cursor:pointer;" title="Klik untuk test bell"></div>
+
+<div class="hdr">
+  <div class="hdr-kiri">
+    <div class="logo-box"><div class="logo-in"><img src="../shared/logo.jpg" alt="" onerror="this.style.display='none'"></div></div>
+    <div><div class="hdr-nama">SMAN 5 Sarolangun</div><div class="hdr-sub">Kreatif &amp; Berkarakter</div></div>
+  </div>
+  <div class="hdr-mid" ondblclick="toggleBellTest()" style="cursor:default;" title="Double-click untuk test bell">Monitor Agenda Kelas Real-time</div>
+  <div><div class="jam" id="jam">--:--:--</div><div class="tgl" id="tgl">--</div></div>
+</div>
+
+<!-- TEST BELL PANEL -->
+<div id="bell-test-panel" style="display:none;position:fixed;top:60px;right:12px;background:#111E30;border:1px solid #E07020;border-radius:12px;padding:14px;z-index:9997;min-width:200px;box-shadow:0 8px 24px rgba(0,0,0,0.5);">
+  <div style="font-size:11px;color:#E07020;margin-bottom:10px;font-weight:700;letter-spacing:1px;">🔔 TEST BELL</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+    <button onclick="window.bunyikanBell('mulai')" style="background:#1A3A5C;color:#90CAF9;border:none;border-radius:7px;padding:6px 8px;font-size:11px;cursor:pointer;font-family:Plus Jakarta Sans,sans-serif;font-weight:600;">Mulai PBM</button>
+    <button onclick="window.bunyikanBell('ganti')" style="background:#1A3A5C;color:#90CAF9;border:none;border-radius:7px;padding:6px 8px;font-size:11px;cursor:pointer;font-family:Plus Jakarta Sans,sans-serif;font-weight:600;">Ganti Jam</button>
+    <button onclick="window.bunyikanBell('istirahat')" style="background:#1A3A5C;color:#90CAF9;border:none;border-radius:7px;padding:6px 8px;font-size:11px;cursor:pointer;font-family:Plus Jakarta Sans,sans-serif;font-weight:600;">Istirahat</button>
+    <button onclick="window.bunyikanBell('masuk')" style="background:#1A3A5C;color:#90CAF9;border:none;border-radius:7px;padding:6px 8px;font-size:11px;cursor:pointer;font-family:Plus Jakarta Sans,sans-serif;font-weight:600;">Masuk</button>
+    <button onclick="window.bunyikanBell('sholat')" style="background:#1A3A5C;color:#90CAF9;border:none;border-radius:7px;padding:6px 8px;font-size:11px;cursor:pointer;font-family:Plus Jakarta Sans,sans-serif;font-weight:600;">Sholat</button>
+    <button onclick="window.bunyikanBell('pulang')" style="background:#1A3A5C;color:#90CAF9;border:none;border-radius:7px;padding:6px 8px;font-size:11px;cursor:pointer;font-family:Plus Jakarta Sans,sans-serif;font-weight:600;">Pulang</button>
+    <button onclick="window.bunyikanBell('apel')" style="background:#1A3A5C;color:#90CAF9;border:none;border-radius:7px;padding:6px 8px;font-size:11px;cursor:pointer;font-family:Plus Jakarta Sans,sans-serif;font-weight:600;">Apel</button>
+    <button onclick="window.bunyikanBell('senam')" style="background:#1A3A5C;color:#90CAF9;border:none;border-radius:7px;padding:6px 8px;font-size:11px;cursor:pointer;font-family:Plus Jakarta Sans,sans-serif;font-weight:600;">Senam</button>
+  </div>
+  <button onclick="document.getElementById('bell-test-panel').style.display='none'" style="width:100%;margin-top:10px;background:rgba(255,255,255,0.05);border:1px solid #1A2E44;color:#546E7A;border-radius:7px;padding:5px;font-size:11px;cursor:pointer;font-family:Plus Jakarta Sans,sans-serif;">✕ Tutup</button>
+</div>
+
+<div class="sumbar">
+  <div class="si"><div class="sdot" style="background:#43A047"></div><span class="slbl">Lengkap</span><span class="sval" id="s-L">0</span></div>
+  <div class="sdiv"></div>
+  <div class="si"><div class="sdot" style="background:#F9A825"></div><span class="slbl">Sebagian</span><span class="sval" id="s-S">0</span></div>
+  <div class="sdiv"></div>
+  <div class="si"><div class="sdot" style="background:#E53935"></div><span class="slbl">Belum</span><span class="sval" id="s-B">0</span></div>
+  <div class="sdiv"></div>
+  <div class="si"><div class="sdot" style="background:#546E7A"></div><span class="slbl">Total</span><span class="sval" id="s-T">0</span></div>
+  <div class="sdiv"></div>
+  <div class="prog-w"><div class="prog-bg"><div class="prog-fill" id="s-fill" style="width:0%"></div></div><div class="prog-pct" id="s-pct">0%</div></div>
+  <div class="hari-chip" id="hari-chip">--</div>
+</div>
+
+<div class="main">
+  <div class="pleft">
+    <div>
+      <div class="sec-lbl" style="margin-bottom:6px">Status Agenda per Kelas</div>
+      <div class="kelas-grid" id="kelas-grid">
+        <div style="grid-column:1/-1;text-align:center;padding:30px;color:#546E7A">Memuat...</div>
+      </div>
+    </div>
+    <div style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:10px;min-height:0;">
+      <!-- SLIDER FOTO (diperkecil) -->
+      <div style="display:flex;flex-direction:column;min-height:0;">
+        <div class="slider-lbl" style="margin-bottom:4px;">Kegiatan Sekolah</div>
+        <div class="slider-outer" id="slider-outer" style="flex:1;min-height:0;">
+          <div class="slider-track" id="slider-track"></div>
+        </div>
+        <div class="slider-dots" id="slider-dots"></div>
+      </div>
+      <!-- KEHADIRAN SISWA HARI INI -->
+      <div style="display:flex;flex-direction:column;min-height:0;">
+        <div class="slider-lbl" style="margin-bottom:6px;">👥 Kehadiran Siswa Hari Ini</div>
+        <div id="kehadiran-siswa" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:5px;">
+          <div style="text-align:center;color:#546E7A;font-size:11px;padding:20px">Memuat...</div>
+        </div>
+        <!-- Total -->
+        <div id="kehadiran-total" style="margin-top:6px;padding:6px 10px;background:rgba(255,255,255,0.05);border-radius:8px;font-size:11px;color:#90A4AE;display:flex;justify-content:space-between;flex-shrink:0;">
+          <span>Total hadir</span><span id="total-hadir-val" style="font-family:DM Mono,monospace;color:#81C784;font-weight:700">—</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="pright">
+    <div>
+      <div class="sec-lbl">Progress per Rombel</div>
+      <div id="bar-chart"></div>
+    </div>
+    <div class="div"></div>
+    <div>
+      <div class="sec-lbl">Capaian Guru Hari Ini</div>
+      <div id="guru-list"></div>
+    </div>
+  </div>
+</div>
+
+<div class="ticker">
+  <span class="ticker-lbl">INFO</span>
+  <div class="ticker-scroll"><span class="ticker-txt" id="ticker-txt">Monitor Agenda Kelas SMAN 5 Sarolangun</span></div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, query, where, getDocs, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const db = getFirestore(initializeApp({
+  apiKey:"AIzaSyC1p_ZWco5ERzi7u-dzQOJbA_nVewS3ahE",
+  authDomain:"agedasmanli.firebaseapp.com",
+  projectId:"agedasmanli",
+  storageBucket:"agedasmanli.firebasestorage.app",
+  messagingSenderId:"969562298791",
+  appId:"1:969562298791:web:320a29a007c74739217e82"
+}));
+
+const HARI  = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+const BULAN = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+
+// JAM
+function updateJam() {
+  const n=new Date();
+  document.getElementById('jam').textContent=`${pad(n.getHours())}:${pad(n.getMinutes())}:${pad(n.getSeconds())}`;
+  document.getElementById('tgl').textContent=`${HARI[n.getDay()]}, ${n.getDate()} ${BULAN[n.getMonth()]} ${n.getFullYear()}`;
+}
+function pad(v){return String(v).padStart(2,'0')}
+updateJam(); setInterval(updateJam,1000);
+
+const NOW         = new Date();
+const HARI_INI    = HARI[NOW.getDay()];
+const TGL_STR     = `${NOW.getFullYear()}-${pad(NOW.getMonth()+1)}-${pad(NOW.getDate())}`;
+document.getElementById('hari-chip').textContent = HARI_INI;
+
+// HELPERS
+function toMen(jam){ if(!jam)return 0; const[h,m]=jam.split(':').map(Number); return h*60+m; }
+function menitNow(){ const n=new Date(); return n.getHours()*60+n.getMinutes(); }
+
+// DATA
+let guru={}, jamBaku=[], rombelList=[], lastData=[];
+
+async function init(){
+  // Guru
+  const gs=await getDocs(collection(db,'Data_Guru'));
+  gs.docs.forEach(d=>{guru[d.id]=d.data();});
+
+  // Jam baku hari ini
+  const jbs=await getDocs(query(collection(db,'Jam_Baku'),where('hari','==',HARI_INI)));
+  jamBaku=jbs.docs.map(d=>d.data()).sort((a,b)=>a.urutan-b.urutan);
+
+  // Roster hari ini
+  const js=await getDocs(query(collection(db,'Jadwal_Pelajaran'),where('hari','==',HARI_INI)));
+  const rm={};
+  js.docs.forEach(d=>{
+    const dd=d.data();
+    const rid=dd.id_rombel||dd.nama_kelas||dd.kelas;
+    if(!rm[rid]) rm[rid]={id:rid,nama:dd.nama_kelas||dd.kelas||rid,slots:[]};
+    rm[rid].slots.push({docId:d.id,rid,...dd});
+  });
+
+  // Urutkan slot per rombel berdasarkan slot_urutan
+  Object.values(rm).forEach(r=>{
+    r.slots.sort((a,b)=>(a.slot_urutan||0)-(b.slot_urutan||0));
+  });
+
+  // Urutkan kelas: X → XI → XII, lalu nomor
+  rombelList=Object.values(rm).sort((a,b)=>{
+    const ord=n=>{
+      const t=n.startsWith('XII')?3:n.startsWith('XI')?2:1;
+      const no=parseInt(n.replace(/[^0-9]/g,''))||0;
+      return t*100+no;
+    };
+    return ord(a.nama)-ord(b.nama);
+  });
+
+  if(!rombelList.length){
+    document.getElementById('kelas-grid').innerHTML='<div style="grid-column:1/-1;text-align:center;padding:30px;color:#546E7A">Tidak ada jadwal hari ini</div>';
+    document.getElementById('loading').style.display='none';
+    return;
+  }
+
+  // Listener agenda real-time
+  onSnapshot(query(collection(db,'Agenda_Harian'),where('tanggal','==',TGL_STR)),snap=>{
+    const agenda=snap.docs.map(d=>d.data());
+    const byId  =new Set(agenda.map(d=>d.id_jadwal).filter(Boolean));
+    const bySlot=new Set(agenda.filter(d=>d.id_rombel&&d.slot_urutan).map(d=>`${d.id_rombel}_${d.slot_urutan}`));
+    const byKel =new Set(agenda.filter(d=>d.kelas&&d.mapel).map(d=>`${d.kelas}_${d.mapel}`));
+
+    function terisi(s){
+      return byId.has(s.docId)||bySlot.has(`${s.rid}_${s.slot_urutan}`)||byKel.has(`${s.nama||s.kelas}_${s.kode_mapel||s.nama_mapel}`);
+    }
+
+    // Hitung mapel unik per rombel (urut slot_urutan)
+    lastData=rombelList.map(r=>{
+      // Mapel unik berurutan sesuai slot
+      const mapelUrut=[];
+      r.slots.forEach(s=>{
+        const kode=s.kode_mapel||s.nama_mapel||'?';
+        if(!mapelUrut.find(m=>m.kode===kode)){
+          mapelUrut.push({kode,slot:s,terisi:false});
+        }
+      });
+      // Tandai yang sudah terisi
+      mapelUrut.forEach(m=>{
+        m.terisi=m.slot.slots ? m.slot.slots.some(s=>terisi(s)) : terisi(m.slot);
+        // Cek semua slot dengan kode mapel sama
+        const slotsSameMapel=r.slots.filter(s=>(s.kode_mapel||s.nama_mapel||'?')===m.kode);
+        m.terisi=slotsSameMapel.some(s=>terisi(s));
+      });
+      const tot=mapelUrut.length;
+      const ter=mapelUrut.filter(m=>m.terisi).length;
+      const pct=tot>0?Math.round(ter/tot*100):0;
+      return{...r,mapelUrut,tot,ter,pct};
+    });
+
+    render(lastData);
+    renderBar(lastData);
+    renderGuru(lastData);
+    renderSum(lastData);
+    renderTicker(lastData);
+    document.getElementById('loading').style.display='none';
+  });
+
+  // Re-render grid setiap menit (update slot jam aktif)
+  setInterval(()=>{ if(lastData.length) render(lastData); },60000);
+
+  initSlider();
+}
+
+// RENDER GRID
+function render(data){
+  const mn=menitNow();
+
+  // Cari slot KBM yang sedang aktif
+  const slotAktif=jamBaku.find(j=>j.jenis==='KBM'&&toMen(j.jam_mulai)<=mn&&mn<toMen(j.jam_selesai))||null;
+  // Slot berikutnya
+  const slotNext=jamBaku.find(j=>j.jenis==='KBM'&&toMen(j.jam_mulai)>mn)||null;
+
+  document.getElementById('kelas-grid').innerHTML=data.map(r=>{
+    const st=r.pct===100?'sudah':r.pct>0?'parsial':'belum';
+    const ikon=r.pct===100?'✅':r.pct>0?'⚡':'🔴';
+    const warna=r.pct===100?'#43A047':r.pct>0?'#F9A825':'#E53935';
+
+    // Info slot aktif untuk kelas ini
+    let jamInfo='', mapelAktif='', guruAktif='';
+
+    function infoGuruSlot(slot){
+      const g=guru[slot?.id_guru];
+      if(!g) return '—';
+      const kode=(g.kode_guru&&isNaN(g.kode_guru))?g.kode_guru+' · ':'';
+      return kode+(g.nama_lengkap||'').split(',')[0];
+    }
+
+    if(slotAktif){
+      // Cari slot kelas ini di jam aktif
+      const s=r.slots.find(sl=>sl.slot_urutan===slotAktif.urutan);
+      if(s){
+        jamInfo=`<div class="k-jam-info" style="color:#F9A825">⏱ Jam ${slotAktif.urutan} · ${slotAktif.jam_mulai}–${slotAktif.jam_selesai}</div>`;
+        mapelAktif=`<div class="k-mapel-aktif">${s.kode_mapel||s.nama_mapel||'—'}</div>`;
+        guruAktif=infoGuruSlot(s);
+      } else {
+        jamInfo=`<div class="k-jam-info" style="color:#546E7A">⏱ Jam ${slotAktif.urutan} · Kosong</div>`;
+        guruAktif='—';
+      }
+    } else if(slotNext){
+      const s=r.slots.find(sl=>sl.slot_urutan===slotNext.urutan);
+      if(s){
+        jamInfo=`<div class="k-jam-info" style="color:#546E7A">⏭ Jam ${slotNext.urutan} · ${slotNext.jam_mulai}</div>`;
+        mapelAktif=`<div class="k-mapel-aktif" style="color:#90A4AE">${s.kode_mapel||s.nama_mapel||'—'}</div>`;
+        guruAktif=infoGuruSlot(s);
+      } else {
+        guruAktif=r.slots[0]?infoGuruSlot(r.slots[0]):'—';
+      }
+    } else {
+      guruAktif=r.slots[0]?infoGuruSlot(r.slots[0]):'—';
+    }
+
+    // Chips mapel BERURUTAN sesuai slot jam
+    const chips=r.mapelUrut.map(m=>{
+      const aktif=slotAktif&&m.slot.slot_urutan===slotAktif.urutan;
+      return `<span class="mc ${m.terisi?'mc-ok':'mc-no'} ${aktif?'mc-aktif':''}">${m.kode}</span>`;
+    }).join('');
+
+    return `<div class="kartu ${st}">
+      <div class="k-top"><div class="k-nama">${r.nama}</div><span class="k-ikon">${ikon}</span></div>
+      ${jamInfo}${mapelAktif}
+      <div class="k-guru">${guruAktif}</div>
+      <div class="mapel-row">${chips}</div>
+      <div class="k-pb"><div class="k-pbf" style="width:${r.pct}%;background:${warna}"></div></div>
+      <div class="k-bot"><span class="k-sesi">${r.ter}/${r.tot} sesi</span><span class="k-pct" style="color:${warna}">${r.pct}%</span></div>
+    </div>`;
+  }).join('');
+}
+
+function renderBar(data){
+  const sorted=[...data].sort((a,b)=>b.pct-a.pct);
+  document.getElementById('bar-chart').innerHTML=sorted.map(r=>{
+    const w=r.pct===100?'#43A047':r.pct>0?'#F9A825':'#E53935';
+    const wp=r.pct===100?'#81C784':r.pct>0?'#FFB74D':'#EF9A9A';
+    return `<div class="bar-item">
+      <div class="bar-lbl">${r.nama}</div>
+      <div class="bar-bg"><div class="bar-fill" style="width:${Math.max(r.pct,3)}%;background:${w}">${r.pct>20?`<span class="bar-txt">${r.ter}/${r.tot}</span>`:''}</div></div>
+      <div class="bar-pct" style="color:${wp}">${r.pct}%</div>
+    </div>`;
+  }).join('');
+}
+
+function renderGuru(data){
+  const rekap={};
+  data.forEach(r=>{
+    r.mapelUrut.forEach(m=>{
+      const gid=m.slot.id_guru||r.slots[0]?.id_guru;
+      if(!gid)return;
+      if(!rekap[gid]){rekap[gid]={tot:0,ter:0};}
+      rekap[gid].tot++;
+      if(m.terisi)rekap[gid].ter++;
+    });
+  });
+  const entries=Object.entries(rekap).map(([gid,r])=>({gid,...r,pct:Math.round(r.ter/r.tot*100)})).sort((a,b)=>b.pct-a.pct);
+  document.getElementById('guru-list').innerHTML=entries.map(e=>{
+    const g=guru[e.gid];
+    const nama=(g?.nama_lengkap||'—').split(',')[0];
+    const kode=g?.kode_guru&&isNaN(g.kode_guru)?g.kode_guru:'??';
+    const w=e.pct===100?'#43A047':e.pct>0?'#F9A825':'#E53935';
+    const wp=e.pct===100?'#81C784':e.pct>0?'#FFB74D':'#EF9A9A';
+    return `<div class="guru-item">
+      <div class="gkode">${kode}</div>
+      <div class="gnama">${nama}</div>
+      <div class="gpb"><div class="gpbf" style="width:${e.pct}%;background:${w}"></div></div>
+      <div class="gpct" style="color:${wp}">${e.pct}%</div>
+    </div>`;
+  }).join('');
+}
+
+function renderSum(data){
+  const L=data.filter(r=>r.pct===100).length,S=data.filter(r=>r.pct>0&&r.pct<100).length,B=data.filter(r=>r.pct===0).length,T=data.length;
+  const P=T>0?Math.round(data.reduce((s,r)=>s+r.pct,0)/T):0;
+  document.getElementById('s-L').textContent=L;
+  document.getElementById('s-S').textContent=S;
+  document.getElementById('s-B').textContent=B;
+  document.getElementById('s-T').textContent=T;
+  document.getElementById('s-fill').style.width=P+'%';
+  document.getElementById('s-pct').textContent=P+'%';
+}
+
+function renderTicker(data){
+  const belum=data.filter(r=>r.pct<100).map(r=>r.nama);
+  const L=data.filter(r=>r.pct===100).length;
+  let txt=`Rekap ${HARI_INI}: ${L} dari ${data.length} kelas lengkap`;
+  if(belum.length) txt+=` · Belum: ${belum.join(', ')}`;
+  else txt+=' · Semua kelas sudah mengisi agenda!';
+  txt+=' · SMAN 5 Sarolangun · Kreatif & Berkarakter';
+  document.getElementById('ticker-txt').textContent=txt;
+}
+
+// SLIDER
+function initSlider(){
+  const fotos=[
+    {src:'../shared/foto/foto1.jpg',cap:'Kegiatan Belajar Mengajar'},
+    {src:'../shared/foto/foto2.jpg',cap:'Upacara Bendera'},
+    {src:'../shared/foto/foto3.jpg',cap:'Ekstrakurikuler'},
+    {src:'../shared/foto/foto4.jpg',cap:'Prestasi Siswa'},
+    {src:'../shared/foto/foto5.jpg',cap:'SMAN 5 Sarolangun'},
+  ];
+  let idx=0,valid=[],done=0;
+  fotos.forEach((f,i)=>{
+    const img=new Image();
+    img.onload =()=>{valid.push({...f,i});done++;if(done===fotos.length)build();};
+    img.onerror=()=>{done++;if(done===fotos.length)build();};
+    img.src=f.src;
+  });
+  function build(){
+    const track=document.getElementById('slider-track');
+    const dots=document.getElementById('slider-dots');
+    if(!valid.length){
+      document.getElementById('slider-outer').innerHTML='<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#546E7A;font-size:12px;flex-direction:column;gap:8px"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg><p>Upload foto ke shared/foto/</p></div>';
+      return;
+    }
+    valid.sort((a,b)=>a.i-b.i);
+    track.innerHTML=valid.map(f=>`<div class="slider-slide"><img src="${f.src}" alt="${f.cap}"><div class="slider-cap"><div class="slider-cap-txt">${f.cap}</div></div></div>`).join('');
+    dots.innerHTML=valid.map((_,i)=>`<div class="dot ${i===0?'on':''}" onclick="go(${i})"></div>`).join('');
+    setInterval(()=>{idx=(idx+1)%valid.length;go(idx);},5000);
+  }
+  window.bunyikanBell = bunyikanBell;
+  window.toggleBellTest = function() {
+    const p = document.getElementById('bell-test-panel');
+    p.style.display = p.style.display === 'none' || !p.style.display ? 'block' : 'none';
+  };
+  window.go=function(i){idx=i;document.getElementById('slider-track').style.transform=`translateX(-${i*100}%)`;document.querySelectorAll('.dot').forEach((d,j)=>d.classList.toggle('on',j===i));};
+}
+
+
+// ══════════════════════════════════════
+// SISTEM BELL OTOMATIS
+// ══════════════════════════════════════
+const BELL_SRC = {
+  mulai:    '../shared/bell/Mulai_Pembelajaran.mp3',
+  ganti:    '../shared/bell/Pergantian-Jam.mp3',
+  istirahat:'../shared/bell/Intirahat.mp3',
+  masuk:    '../shared/bell/Masuk_Setelah_Istirahat.mp3',
+  sholat:   '../shared/bell/Sholat.mp3',
+  pulang:   '../shared/bell/Pulang.mp3',
+  apel:     '../shared/bell/Apel.mp3',
+  senam:    '../shared/bell/Senam.mp3',
+};
+
+const BELL_NAMA = {
+  mulai:'🔔 Mulai Pembelajaran',
+  ganti:'🔔 Pergantian Jam',
+  istirahat:'🔔 Istirahat',
+  masuk:'🔔 Masuk Kembali',
+  sholat:'🕌 Istirahat Sholat Zuhur',
+  pulang:'🏠 Pulang',
+  apel:'🏳️ Apel Pagi',
+  senam:'🏃 Senam Pagi',
+};
+
+let bellAktif     = false;
+let bellSudahBunyi = new Set();
+let audioCtx       = null;
+let audioPlayer    = null;
+
+// Dipanggil saat user klik tombol aktivasi
+window.aktivasiBell = function() {
+  // Buat AudioContext setelah interaksi user
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+  // Test play audio pendek untuk unlock
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  gain.gain.value = 0.001; // hampir tidak terdengar
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+
+  bellAktif = true;
+  document.getElementById('bell-overlay').style.display = 'none';
+
+  // Tampilkan indikator bell aktif
+  const st = document.getElementById('bell-status');
+  st.textContent = '🔔 Bell Aktif';
+  st.style.cssText = 'position:fixed;bottom:28px;left:16px;font-size:10px;font-weight:600;padding:2px 8px;border-radius:8px;z-index:100;background:rgba(67,160,71,0.2);color:#81C784;border:1px solid rgba(67,160,71,0.3);display:block';
+
+  console.log('[Bell] Sistem bell aktif');
+};
+
+function bunyikanBell(jenis) {
+  if (!bellAktif) return;
+  const src = BELL_SRC[jenis];
+  if (!src) return;
+
+  // Cegah double-play dalam 1 menit
+  const key = `${new Date().toDateString()}_${jenis}_${Math.floor(Date.now()/60000)}`;
+  if (bellSudahBunyi.has(key)) return;
+  bellSudahBunyi.add(key);
+
+  // Hentikan bell sebelumnya
+  if (audioPlayer) { audioPlayer.pause(); audioPlayer.currentTime = 0; }
+  audioPlayer = new Audio(src);
+  audioPlayer.volume = 1.0;
+  audioPlayer.play()
+    .then(() => tampilNotifBell(jenis))
+    .catch(e => console.warn('[Bell] Play error:', e));
+}
+
+function tampilNotifBell(jenis) {
+  const nama = BELL_NAMA[jenis] || jenis;
+  // Hapus notif lama
+  document.querySelectorAll('.bell-notif').forEach(el => el.remove());
+  const div = document.createElement('div');
+  div.className = 'bell-notif';
+  div.textContent = nama;
+  document.body.appendChild(div);
+  setTimeout(() => div.remove(), 4000);
+}
+
+// Reset bell log tiap hari baru
+let hariTerakhir = new Date().toDateString();
+setInterval(() => {
+  const hariIniStr = new Date().toDateString();
+  if (hariIniStr !== hariTerakhir) {
+    bellSudahBunyi.clear();
+    hariTerakhir = hariIniStr;
+  }
+}, 60000);
+
+// Cek bell setiap 10 detik
+function cekBell() {
+  if (!jamBaku.length) return;
+
+  const n     = new Date();
+  const menit = n.getHours()*60 + n.getMinutes();
+  const detik = n.getSeconds();
+
+  // Hanya proses di detik 0-15 untuk menghindari double trigger
+  if (detik > 15) return;
+
+  // Cari index jeda ke berapa (untuk tahu apakah ini jeda pertama atau kedua)
+  const jedaList = jamBaku.filter(j => j.jenis === 'Jeda');
+
+  jamBaku.forEach((slot, idx) => {
+    const slotMulai = toMen(slot.jam_mulai);
+
+    // Tepat saat slot dimulai (toleransi 1 menit)
+    if (Math.abs(menit - slotMulai) > 1) return;
+
+    if (slot.jenis === 'KBM') {
+      // Cek apakah ini jam KBM pertama hari ini
+      const kbmSebelumnya = jamBaku.slice(0, idx).filter(j => j.jenis === 'KBM');
+
+      if (kbmSebelumnya.length === 0) {
+        // Jam KBM pertama = Mulai Pembelajaran
+        bunyikanBell('mulai');
+      } else {
+        // Cek apakah slot sebelumnya adalah Jeda
+        const slotSebelum = jamBaku[idx-1];
+        if (slotSebelum?.jenis === 'Jeda') {
+          // Kembali dari jeda
+          // Cek apakah jeda ini adalah jeda sholat (jeda ke-2)
+          const jedaIdx = jedaList.findIndex(j => j.jam_mulai === slotSebelum.jam_mulai);
+          if (jedaIdx >= 1) {
+            // Jeda ke-2 atau lebih = setelah sholat
+            bunyikanBell('masuk');
+          } else {
+            // Jeda ke-1 = setelah istirahat pertama
+            bunyikanBell('masuk');
+          }
+        } else {
+          // Pergantian jam biasa
+          bunyikanBell('ganti');
+        }
+      }
+    } else if (slot.jenis === 'Jeda') {
+      const ket = (slot.keterangan||'').toLowerCase();
+      if (ket.includes('sholat') || ket.includes('zuhur') || ket.includes('dzuhur')) {
+        bunyikanBell('sholat');
+      } else if (ket.includes('upacara') || ket.includes('apel')) {
+        bunyikanBell('apel');
+      } else if (ket.includes('senam')) {
+        bunyikanBell('senam');
+      } else {
+        bunyikanBell('istirahat');
+      }
+    }
+  });
+
+  // Bell pulang = saat jam KBM terakhir selesai
+  const kbmSlots = jamBaku.filter(j => j.jenis === 'KBM');
+  if (kbmSlots.length > 0) {
+    const jamTerakhir = kbmSlots[kbmSlots.length-1];
+    if (Math.abs(menit - toMen(jamTerakhir.jam_selesai)) <= 1) {
+      bunyikanBell('pulang');
+    }
+  }
+}
+
+setInterval(cekBell, 10000); // Cek setiap 10 detik
+
+// ── KEHADIRAN SISWA REAL-TIME ──
+async function muatKehadiranSiswa() {
+  try {
+    // Total siswa per kelas dari Data_Siswa
+    const sSnap = await getDocs(collection(db, 'Data_Siswa'));
+    const totalPerKelas = {};
+    sSnap.docs.forEach(d => {
+      const k = d.data().kelas || '';
+      if (k) totalPerKelas[k] = (totalPerKelas[k] || 0) + 1;
+    });
+
+    if (!Object.keys(totalPerKelas).length) {
+      document.getElementById('kehadiran-siswa').innerHTML =
+        '<div style="text-align:center;color:#546E7A;font-size:11px;padding:10px">Belum ada data siswa</div>';
+      return;
+    }
+
+    // Real-time listener presensi hari ini
+    onSnapshot(
+      query(collection(db, 'Presensi_Harian'), where('tanggal', '==', TGL_STR)),
+      snap => {
+        const hadirPerKelas = {};
+        snap.docs.forEach(d => {
+          const k = d.data().kelas || '';
+          if (k) hadirPerKelas[k] = (hadirPerKelas[k] || 0) + 1;
+        });
+
+        const kelas = Object.keys(totalPerKelas).sort();
+        const el    = document.getElementById('kehadiran-siswa');
+        const totalH = snap.docs.length;
+        const totalS = Object.values(totalPerKelas).reduce((s,v)=>s+v,0);
+
+        document.getElementById('total-hadir-val').textContent = `${totalH} / ${totalS}`;
+
+        el.innerHTML = kelas.map(k => {
+          const hadir = hadirPerKelas[k] || 0;
+          const total = totalPerKelas[k] || 0;
+          const bolos = total - hadir;
+          const pct   = total > 0 ? Math.round(hadir/total*100) : 0;
+          const warna = pct >= 90 ? '#43A047' : pct >= 75 ? '#F9A825' : '#E53935';
+          return `<div class="hadir-item">
+            <div class="hadir-kelas">${k}</div>
+            <div class="hadir-pb-bg"><div class="hadir-pb-fill" style="width:${pct}%;background:${warna}"></div></div>
+            <div class="hadir-angka" style="color:${warna}">${hadir}/${total}</div>
+            ${bolos > 0
+              ? `<span class="hadir-badge" style="background:rgba(229,57,53,0.2);color:#EF9A9A">-${bolos}</span>`
+              : `<span class="hadir-badge" style="background:rgba(67,160,71,0.2);color:#81C784">✓</span>`
+            }
+          </div>`;
+        }).join('');
+      }
+    );
+  } catch(e) {
+    console.log('Kehadiran:', e.message);
+    document.getElementById('kehadiran-siswa').innerHTML =
+      '<div style="text-align:center;color:#546E7A;font-size:11px;padding:10px">'+e.message+'</div>';
+  }
+}
+
+muatKehadiranSiswa();
+init();
+</script>
+</body>
+</html>
