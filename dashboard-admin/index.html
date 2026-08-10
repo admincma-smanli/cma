@@ -531,7 +531,7 @@
     .roster-slot:hover { background:var(--oranye-terang); }
     .roster-slot.terisi { background:#E8F5E9; cursor:pointer; }
     .roster-slot.terisi:hover { background:#C8E6C9; }
-    .roster-slot-kode { font-family:"DM Mono",monospace; font-size:12px; font-weight:700; color:var(--biru-tua); }
+    .roster-slot-kode { font-size:11.5px; font-weight:700; color:var(--biru-tua); line-height:1.25; word-break:break-word; }
     .roster-slot-guru { font-size:10px; color:var(--hijau); font-weight:600; margin-top:2px; }
     .roster-slot-jp { font-size:10px; color:var(--abu); }
     .roster-slot-kosong { color:var(--border); font-size:18px; text-align:center; width:100%; }
@@ -2533,11 +2533,11 @@
         if (isi) {
           const mapel = allMapel.find(m => m.id === isi.id_mapel);
           const guru  = cacheGuru[isi.id_guru];
-          const kodeM = mapel?.kode_mapel || '?';
+          const namaM = mapel?.nama_singkat || mapel?.nama_mapel || mapel?.kode_mapel || '?';
           const kodeG = guru?.kode_guru || '?';
           html += `<td onclick="rosterKlikSlot('${r.id}','${slot.urutan}','${slotKey}')" title="${mapel?.nama_mapel||''} — ${guru?.nama_lengkap||''}">
             <div class="roster-slot terisi">
-              <div class="roster-slot-kode">${kodeM}</div>
+              <div class="roster-slot-kode">${namaM}</div>
               <div class="roster-slot-guru">${kodeG}</div>
               ${isi.durasi_jp > 1 ? `<div class="roster-slot-jp">${isi.durasi_jp}JP</div>` : ''}
             </div>
