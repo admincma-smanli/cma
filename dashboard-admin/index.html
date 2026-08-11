@@ -2876,7 +2876,10 @@
       return `<div class="mapel-card">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
           <span class="mapel-kode">${m.kode_mapel||'?'}</span>
-          <button onclick="editMapel('${m.id}')" style="font-size:11px;padding:2px 8px;border:1px solid var(--border);border-radius:6px;background:transparent;cursor:pointer;color:var(--oranye);font-weight:700">✏️ Edit</button>
+          <div style="display:flex;gap:4px;">
+            <button onclick="editMapel('${m.id}')" style="font-size:11px;padding:2px 8px;border:1px solid var(--border);border-radius:6px;background:transparent;cursor:pointer;color:var(--oranye);font-weight:700">✏️ Edit</button>
+            <button onclick="hapusMapel('${m.id}')" style="font-size:11px;padding:2px 8px;border:1px solid #FFCDD2;border-radius:6px;background:#FFEBEE;cursor:pointer;color:#C62828;font-weight:700" title="Hapus">🗑</button>
+          </div>
         </div>
         <div class="mapel-nama">${m.nama_mapel||'—'}
           ${m.fase ? `<span class="fase-badge fase-${(m.fase||'').toLowerCase().replace(' & f','').replace('e & ','')}">${m.fase}</span>` : ''}
@@ -2958,6 +2961,29 @@
 
   window.fmHapusGuru = function(i) { fmGuruList.splice(i,1); fmRenderGuruChips(); };
   window.editMapel   = function(id) { tampilFormMapel(id); };
+
+  window.hapusMapel = async function(id) {
+    const m = allMapel.find(x => x.id === id);
+    if (!m) return;
+    // Info dampak: bank materi & jadwal yang memakai mapel ini
+    const jmlMateri = (typeof allMateriKurikulum !== 'undefined' ? allMateriKurikulum : []).filter(mt => mt.id_mapel === id || (mt.mapel||'') === (m.nama_mapel||'')).length;
+    const jmlJadwal = allJadwal.filter(j => (j.mata_pelajaran||j.mapel||'') === (m.nama_mapel||'')).length;
+    let pesan = `Hapus mata pelajaran "${m.nama_mapel||'—'}" [${m.kode_mapel||'?'}]?`;
+    if (jmlMateri || jmlJadwal) {
+      pesan += `\n\n⚠ Mapel ini masih dipakai oleh:`;
+      if (jmlMateri) pesan += `\n• ${jmlMateri} materi di Bank Materi`;
+      if (jmlJadwal) pesan += `\n• ${jmlJadwal} baris jadwal pelajaran`;
+      pesan += `\nData tersebut TIDAK ikut terhapus, tapi bisa jadi tidak tampil di dropdown Portal Guru. Lanjutkan?`;
+    }
+    if (!confirm(pesan)) return;
+    try {
+      await deleteDoc(doc(db, 'Mata_Pelajaran', id));
+      allMapel = allMapel.filter(x => x.id !== id);
+      renderMapelGrid(allMapel);
+      renderGuru(); // refresh tag mapel pada kartu guru
+      tampilToast('✅ Mata pelajaran dihapus!');
+    } catch(e) { tampilToast('❌ Gagal hapus: ' + e.message); }
+  };
 
   window.simpanMapel = async function() {
     const kode = document.getElementById('fm-kode').value.trim().toUpperCase();
