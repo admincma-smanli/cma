@@ -237,7 +237,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, collection, query, where, getDocs, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, collection, query, where, getDocs, getDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const db = getFirestore(initializeApp({
   apiKey:"AIzaSyA7xz1VTaMZwhLZOdapS6YyQ94K-NKXpvU",
@@ -281,11 +281,24 @@ async function init(){
   const jbs=await getDocs(query(collection(db,'Jam_Baku'),where('hari','==',HARI_INI)));
   jamBaku=jbs.docs.map(d=>d.data()).sort((a,b)=>a.urutan-b.urutan);
 
-  // Roster hari ini
+  // TP/Semester aktif dari Profil Sekolah (portal admin)
+  let tpAktif='', smtAktif='';
+  try{
+    const ps=await getDoc(doc(db,'Profil_Sekolah','profil_utama'));
+    if(ps.exists()){ tpAktif=(ps.data().tahun_ajaran||'').trim(); smtAktif=(ps.data().semester||'').trim(); }
+  }catch(e){}
+  const cocokTpAktif=dd=>{
+    if(tpAktif && dd.tahun_ajaran && dd.tahun_ajaran!==tpAktif) return false;
+    if(smtAktif && dd.semester && dd.semester!==smtAktif) return false;
+    return true;
+  };
+
+  // Roster hari ini (hanya TP/semester aktif)
   const js=await getDocs(query(collection(db,'Jadwal_Pelajaran'),where('hari','==',HARI_INI)));
   const rm={};
   js.docs.forEach(d=>{
     const dd=d.data();
+    if(!cocokTpAktif(dd)) return;
     const rid=dd.id_rombel||dd.nama_kelas||dd.kelas;
     if(!rm[rid]) rm[rid]={id:rid,nama:dd.nama_kelas||dd.kelas||rid,slots:[]};
     rm[rid].slots.push({docId:d.id,rid,...dd});
