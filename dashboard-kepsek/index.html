@@ -628,7 +628,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, collection, query, where, getDocs, orderBy, limit, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, collection, query, where, getDocs, getDoc, doc, orderBy, limit, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const app = initializeApp({
@@ -696,14 +696,26 @@ onAuthStateChanged(auth, async user => {
 });
 
 // MUAT DATA
+let tpAktif = '', smtAktif = '';
+function cocokTpAktif(d) {
+  if (tpAktif  && d.tahun_ajaran && d.tahun_ajaran !== tpAktif)  return false;
+  if (smtAktif && d.semester     && d.semester     !== smtAktif) return false;
+  return true;
+}
+
 async function muatSemuaData() {
-  const [gSnap, rSnap, mSnap, jSnap, kSnap] = await Promise.all([
+  const [gSnap, rSnap, mSnap, jSnap, kSnap, pSnap] = await Promise.all([
     getDocs(collection(db,'Data_Guru')),
     getDocs(collection(db,'Rombel')),
     getDocs(collection(db,'Mata_Pelajaran')),
     getDocs(collection(db,'Jadwal_Pelajaran')),
     getDocs(collection(db,'Kalender_Akademik')),
+    getDoc(doc(db,'Profil_Sekolah','profil_utama')).catch(() => null),
   ]);
+  if (pSnap && pSnap.exists()) {
+    tpAktif  = (pSnap.data().tahun_ajaran || '').trim();
+    smtAktif = (pSnap.data().semester || '').trim();
+  }
   gSnap.docs.forEach(d => { cacheGuru[d.id]   = d.data(); });
   rSnap.docs.forEach(d => { cacheRombel[d.id] = d.data(); });
   // Build reverse map: nama_kelas (normalized) → docId
@@ -714,14 +726,15 @@ async function muatSemuaData() {
     window.rombelByNama[(r.nama_kelas||'').toUpperCase()] = { id, ...r };
   });
   mSnap.docs.forEach(d => { cacheMapel[d.id]  = d.data(); });
-  cacheJadwal = jSnap.docs.map(d => ({ id:d.id, ...d.data() }));
+  cacheJadwal = jSnap.docs.map(d => ({ id:d.id, ...d.data() })).filter(cocokTpAktif);
 
   // Kalender — ambil semester aktif
   kSnap.docs.forEach(d => {
     const dd = d.data();
     const bulan = now.getMonth()+1;
-    const smtAktif = bulan >= 7 ? 'ganjil' : 'genap';
-    if (dd.semester === smtAktif) kalender = dd;
+    const smtKal = (smtAktif || (bulan >= 7 ? 'Ganjil' : 'Genap')).toLowerCase();
+    if ((dd.semester||'').toLowerCase() === smtKal &&
+        (!tpAktif || !dd.tahun_ajaran || dd.tahun_ajaran === tpAktif)) kalender = dd;
   });
 
   // Muat agenda periode aktif
