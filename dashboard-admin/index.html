@@ -1284,6 +1284,37 @@
     <div class="rombel-grid" id="rombel-grid">
       <div class="loading-inline">Memuat data kelas...</div>
     </div>
+
+    <!-- ═══ RUANG BELAJAR LAIN (LAB, PERPUSTAKAAN, DLL) ═══ -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin:26px 0 12px;flex-wrap:wrap;gap:8px;">
+      <div>
+        <div class="section-judul" style="margin:0">🧪 Ruang Belajar Lain</div>
+        <div style="font-size:12px;color:var(--abu);margin-top:2px">Lab, perpustakaan, aula, dll — QR-nya dibaca Portal Guru saat KBM berlangsung di luar ruang rombel</div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn-ekspor" style="background:var(--hijau);color:white;border-color:#1B5E20" onclick="tampilCetakQRRuang()">🖨️ Cetak QR Ruang</button>
+        <button class="btn-ekspor" style="background:var(--oranye);color:white;" onclick="tampilFormRuang(null)">+ Tambah Ruang</button>
+      </div>
+    </div>
+
+    <div id="form-ruang-wrap" style="display:none;margin-bottom:14px;">
+      <div class="tabel-card" style="padding:18px;">
+        <div class="section-judul" id="form-ruang-judul" style="margin-bottom:12px;">➕ Tambah Ruang Belajar</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div><label class="form-lbl">Nama Ruang *</label><input type="text" class="filter-input" id="fru-nama" placeholder="Lab IPA" style="width:100%;margin-top:4px"></div>
+          <div><label class="form-lbl">Keterangan</label><input type="text" class="filter-input" id="fru-ket" placeholder="Gedung B lantai 1 (opsional)" style="width:100%;margin-top:4px"></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:14px;">
+          <button class="btn-ekspor" style="background:var(--oranye);color:white;" onclick="simpanRuang()">💾 Simpan</button>
+          <button class="btn-ekspor" style="background:#f0f0f0;color:var(--teks);" onclick="tutupFormRuang()">Batal</button>
+        </div>
+        <div id="ruang-form-error" style="color:var(--merah);font-size:13px;margin-top:8px;font-weight:600;"></div>
+      </div>
+    </div>
+
+    <div class="rombel-grid" id="ruang-grid">
+      <div class="loading-inline">Memuat data ruang...</div>
+    </div>
   </div>
 
   <!-- PAGE: PROFIL SEKOLAH -->
@@ -2085,7 +2116,7 @@
     if (page === 'kalender') initKalender();
     if (page === 'roster')   { if(!rosterSudahMuat) rosterMuat(); else rosterRenderGrid(); }
     if (page === 'mapel')    { renderMapelGrid(allMapel); }
-    if (page === 'rombel')   { renderRombelGrid(); }
+    if (page === 'rombel')   { renderRombelGrid(); if (!ruangSudahMuat) muatRuang(); else renderRuangGrid(); }
     if (page === 'pelanggaran') { muatPelanggaran(); }
   };
 
@@ -2417,6 +2448,7 @@
       Tanggal:       a.tanggal||'',
       Guru:          (cacheGuru[a.id_guru]||{}).nama_lengkap||'',
       Kelas:         a.kelas||'',
+      Ruang:         a.ruang||'',
       'Mata Pelajaran': a.mapel||'',
       'Materi Pokok':a.materi_pokok||'',
       'Sub Materi':  a.sub_materi||'',
@@ -3214,6 +3246,168 @@
       renderRombelGrid();
       tampilToast('✅ Kelas berhasil dihapus!');
     } catch(e) { tampilToast('❌ Gagal hapus: ' + e.message); }
+  };
+
+  // ══════════════════════════════════════
+  // RUANG BELAJAR LAIN (LAB, PERPUS, DLL)
+  // ══════════════════════════════════════
+  let allRuang = [];
+  let editRuangId = null;
+  let ruangSudahMuat = false;
+
+  async function muatRuang() {
+    try {
+      const snap = await getDocs(collection(db, 'Ruang_Belajar'));
+      allRuang = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+        .sort((a,b) => (a.nama_ruang||'').localeCompare(b.nama_ruang||''));
+      ruangSudahMuat = true;
+    } catch(e) { allRuang = []; }
+    renderRuangGrid();
+  }
+
+  function renderRuangGrid() {
+    const grid = document.getElementById('ruang-grid');
+    if (!grid) return;
+    if (!allRuang.length) {
+      grid.innerHTML = '<div class="loading-inline">Belum ada ruang. Klik "+ Tambah Ruang" untuk Lab, Perpustakaan, dll.</div>';
+      return;
+    }
+    grid.innerHTML = allRuang.map(r => `<div class="rombel-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div class="rombel-nama">🧪 ${r.nama_ruang}</div>
+          <div style="display:flex;gap:4px;">
+            <button onclick="editRuang('${r.id}')" style="font-size:11px;padding:2px 8px;border:1px solid var(--border);border-radius:6px;background:transparent;cursor:pointer;color:var(--oranye);font-weight:700" title="Edit">✏️</button>
+            <button onclick="hapusRuang('${r.id}')" style="font-size:11px;padding:2px 8px;border:1px solid #FFCDD2;border-radius:6px;background:#FFEBEE;cursor:pointer;color:#C62828;font-weight:700" title="Hapus">🗑</button>
+          </div>
+        </div>
+        <div class="rombel-info">${r.keterangan || '<span style="color:var(--abu)">—</span>'}</div>
+      </div>`).join('');
+  }
+
+  window.tampilFormRuang = function(id) {
+    editRuangId = id;
+    document.getElementById('form-ruang-wrap').style.display = 'block';
+    document.getElementById('ruang-form-error').textContent = '';
+    if (id) {
+      const r = allRuang.find(x => x.id === id);
+      document.getElementById('form-ruang-judul').textContent = '✏️ Edit Ruang — ' + (r?.nama_ruang||'');
+      document.getElementById('fru-nama').value = r?.nama_ruang||'';
+      document.getElementById('fru-ket').value  = r?.keterangan||'';
+    } else {
+      document.getElementById('form-ruang-judul').textContent = '➕ Tambah Ruang Belajar';
+      document.getElementById('fru-nama').value = '';
+      document.getElementById('fru-ket').value  = '';
+    }
+    document.getElementById('form-ruang-wrap').scrollIntoView({ behavior:'smooth' });
+  };
+
+  window.tutupFormRuang = function() {
+    document.getElementById('form-ruang-wrap').style.display = 'none';
+    editRuangId = null;
+  };
+
+  window.editRuang = function(id) { tampilFormRuang(id); };
+
+  window.simpanRuang = async function() {
+    const nama = document.getElementById('fru-nama').value.trim();
+    const ket  = document.getElementById('fru-ket').value.trim();
+    const errEl = document.getElementById('ruang-form-error');
+    errEl.textContent = '';
+    if (!nama) { errEl.textContent = 'Nama ruang wajib diisi!'; return; }
+    // Cegah nama ganda (juga cegah bentrok dengan nama rombel agar QR tidak ambigu)
+    const norm = v => (v||'').replace(/[\s\-_.]/g,'').toUpperCase();
+    const ganda = allRuang.find(r => norm(r.nama_ruang) === norm(nama) && r.id !== editRuangId);
+    if (ganda) { errEl.textContent = `Ruang "${ganda.nama_ruang}" sudah ada!`; return; }
+    const bentrokRombel = allRombel.find(r => norm(r.nama_kelas) === norm(nama));
+    if (bentrokRombel) { errEl.textContent = `Nama bentrok dengan rombel "${bentrokRombel.nama_kelas}" — QR rombel sudah mencakup ruang itu.`; return; }
+    const data = { nama_ruang: nama, keterangan: ket };
+    try {
+      if (editRuangId) {
+        await updateDoc(doc(db, 'Ruang_Belajar', editRuangId), data);
+        const idx = allRuang.findIndex(r => r.id === editRuangId);
+        if (idx >= 0) allRuang[idx] = { id: editRuangId, ...data };
+        tampilToast('✅ Ruang diperbarui!');
+      } else {
+        const ref = await addDoc(collection(db, 'Ruang_Belajar'), data);
+        allRuang.push({ id: ref.id, ...data });
+        tampilToast('✅ Ruang ditambahkan!');
+      }
+      allRuang.sort((a,b) => (a.nama_ruang||'').localeCompare(b.nama_ruang||''));
+      tutupFormRuang();
+      renderRuangGrid();
+    } catch(e) { errEl.textContent = 'Gagal: ' + e.message; }
+  };
+
+  window.hapusRuang = async function(id) {
+    const r = allRuang.find(x => x.id === id);
+    if (!r) return;
+    if (!confirm(`Hapus ruang "${r.nama_ruang}"?\n\nQR yang sudah dicetak untuk ruang ini tidak akan valid lagi bila dicetak ulang, tapi QR fisik lama tetap terbaca Portal Guru.`)) return;
+    try {
+      await deleteDoc(doc(db, 'Ruang_Belajar', id));
+      allRuang = allRuang.filter(x => x.id !== id);
+      renderRuangGrid();
+      tampilToast('✅ Ruang dihapus!');
+    } catch(e) { tampilToast('❌ Gagal hapus: ' + e.message); }
+  };
+
+  window.tampilCetakQRRuang = async function() {
+    if (!allRuang.length) { tampilToast('⚠ Belum ada ruang. Tambah dulu.'); return; }
+    if (typeof QRCode === 'undefined') {
+      await new Promise(resolve => {
+        const s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+        s.onload = resolve; document.head.appendChild(s);
+      });
+    }
+    const overlay = document.createElement('div');
+    overlay.id = 'qr-ruang-overlay';
+    overlay.className = 'qr-print-overlay';
+    overlay.innerHTML = `
+      <div class="qr-print-box">
+        <div class="qr-print-header no-print">
+          <div>
+            <div style="font-size:15px;font-weight:700;color:var(--biru-tua)">🖨️ Cetak QR Code Ruang Belajar</div>
+            <div style="font-size:11px;color:var(--abu);margin-top:2px">Ukuran cetak: 10×10 cm per QR · Tempel di pintu lab/ruang untuk verifikasi agenda</div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button onclick="window.print()" style="padding:8px 18px;background:var(--oranye);color:white;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif">🖨️ Print Semua</button>
+            <button onclick="document.getElementById('qr-ruang-overlay').remove()" style="padding:8px 14px;background:#F5F5F5;border:1px solid var(--border);border-radius:8px;font-size:13px;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif">✕ Tutup</button>
+          </div>
+        </div>
+        <div style="background:#FFF8F0;border-bottom:1px solid var(--border);padding:10px 16px;font-size:12px;color:var(--oranye-gelap)" class="no-print">
+          💡 QR ini dibaca Portal Guru saat KBM berlangsung di lab/ruang lain — nama ruang otomatis tercatat di agenda.
+        </div>
+        <div class="qr-print-body">
+          <div class="qr-grid-preview" id="qr-ruang-grid"></div>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+
+    const grid = document.getElementById('qr-ruang-grid');
+    allRuang.forEach(r => {
+      const qrData = `RUANG:${r.nama_ruang}|SEKOLAH:SMAN5SRL`;
+      const card = document.createElement('div');
+      card.className = 'qr-rombel-card';
+      card.innerHTML = `
+        <div class="qr-rombel-sekolah">SMAN 5 SAROLANGUN</div>
+        <div id="qr-ruang-${r.id}" style="display:flex;justify-content:center"></div>
+        <div class="qr-rombel-nama">${r.nama_ruang}</div>
+        <div class="qr-rombel-fase">${r.keterangan||'Ruang Belajar'}</div>
+        <div class="qr-rombel-scan">📱 SCAN UNTUK VERIFIKASI LOKASI KBM</div>`;
+      grid.appendChild(card);
+      setTimeout(() => {
+        const el = document.getElementById(`qr-ruang-${r.id}`);
+        if (el) {
+          new QRCode(el, {
+            text: qrData,
+            width: 140, height: 140,
+            colorDark: '#1A3A5C',
+            colorLight: '#ffffff',
+            correctLevel: QRCode.CorrectLevel.H
+          });
+        }
+      }, 100);
+    });
   };
 
   window.simpanRombel = async function() {
