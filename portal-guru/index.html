@@ -11473,6 +11473,18 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
   };
   const semesterSaatIni = () => (sekarang.getMonth() + 1) >= 7 ? 'Ganjil' : 'Genap';
 
+  // TP/Semester aktif dari Profil_Sekolah (portal admin) — filter jadwal semua tab
+  let tpAktif = '', smtAktif = '';
+  let profilSudahDimuat = false;
+  function cocokTpAktif(d) {
+    if (tpAktif  && d.tahun_ajaran && d.tahun_ajaran !== tpAktif)  return false;
+    if (smtAktif && d.semester     && d.semester     !== smtAktif) return false;
+    return true;
+  }
+  async function pastikanProfil() {
+    if (!profilSudahDimuat) await muatProfilSekolah();
+  }
+
   muatProfilSekolah();
   document.getElementById('teks-tanggal').textContent =
     `${namaHari[sekarang.getDay()]}, ${sekarang.getDate()} ${namaBulan[sekarang.getMonth()]} ${sekarang.getFullYear()}`;
@@ -11559,6 +11571,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     const jadwalEl = document.getElementById('jadwal-list');
     if (jadwalEl) jadwalEl.innerHTML = '<div class="loading-inline">Memuat jadwal...</div>';
 
+    await pastikanProfil();
     await muatJadwal();
     await muatRiwayat();
 
@@ -11566,8 +11579,8 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
       db,
       mode: 'guru',
       currentUser: { id: guruAktif.id, nama: guruAktif.nama_lengkap },
-      tahunAjaran: tahunAjaranSaatIni(),
-      semester: semesterSaatIni(),
+      tahunAjaran: tpAktif || tahunAjaranSaatIni(),
+      semester: smtAktif || semesterSaatIni(),
       getSiswaList: async (teks) => {
         // Pelanggaran bisa terjadi kapan saja, tidak terikat jam/kelas yang sedang diajar —
         // jadi pencarian dibuka ke semua siswa, sama seperti Wali Kelas dan BK.
@@ -11689,13 +11702,14 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
         kelasTarget = [jadwalDipilih.nama_kelas || jadwalDipilih.kelas || ''].filter(Boolean);
       } else {
         // Fallback (belum ada jadwal dipilih): tampilkan semua kelas guru hari ini
-        const snapJ = await getDocs(query(
+        const snapJraw = await getDocs(query(
           collection(db, 'Jadwal_Pelajaran'),
           where('id_guru', '==', guruAktif.id),
           where('hari', '==', hariIni)
         ));
-        const kelasList = snapJ.empty ? [] :
-          [...new Set(snapJ.docs.map(d => d.data().nama_kelas || d.data().kelas || '').filter(Boolean))].sort();
+        const snapJdocs = snapJraw.docs.filter(d => cocokTpAktif(d.data()));
+        const kelasList = !snapJdocs.length ? [] :
+          [...new Set(snapJdocs.map(d => d.data().nama_kelas || d.data().kelas || '').filter(Boolean))].sort();
         kelasTarget = kelasList.length > 0 ? kelasList :
           [...new Set(semuaSiswa.map(s => s.kelas||'').filter(Boolean))].sort();
       }
@@ -11930,12 +11944,15 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
       timerJam = setInterval(cekNotifikasiJam, 60000);
       updateChipSisaJam(menitSekarang());
 
-      // Muat roster guru hari ini
-      const snap = await getDocs(query(
+      // Muat roster guru hari ini (hanya TP/semester aktif sesuai Profil Sekolah)
+      await pastikanProfil();
+      const snapRaw = await getDocs(query(
         collection(db, 'Jadwal_Pelajaran'),
         where('id_guru', '==', guruAktif.id),
         where('hari', '==', hariIni)
       ));
+      const snap = { docs: snapRaw.docs.filter(d => cocokTpAktif(d.data())), empty: false };
+      snap.empty = snap.docs.length === 0;
 
       if (snap.empty) {
         listEl.innerHTML = `<div class="empty-state"><div class="ikon">🏖️</div><p>Tidak ada jadwal mengajar hari ini.</p></div>`;
@@ -12283,13 +12300,15 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     el.innerHTML = '<div class="empty-state"><div class="ikon">⏳</div><p>Memuat roster...</p></div>';
 
     try {
-      const snap = await getDocs(query(
+      await pastikanProfil();
+      const snapRawR = await getDocs(query(
         collection(db, 'Jadwal_Pelajaran'),
         where('id_guru', '==', guruAktif.id)
       ));
+      const snap = { docs: snapRawR.docs.filter(d => cocokTpAktif(d.data())) };
 
-      if (snap.empty) {
-        el.innerHTML = '<div class="empty-state"><div class="ikon">📭</div><p>Belum ada jadwal tersusun.<br><small>Hubungi admin untuk menyusun roster.</small></p></div>';
+      if (!snap.docs.length) {
+        el.innerHTML = '<div class="empty-state"><div class="ikon">📭</div><p>Belum ada jadwal tersusun untuk TP/semester aktif.<br><small>Hubungi admin untuk menyusun roster.</small></p></div>';
         return;
       }
 
@@ -12424,8 +12443,11 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
         if (d.latitude)  sekolahLat    = parseFloat(d.latitude);
         if (d.longitude) sekolahLng    = parseFloat(d.longitude);
         if (d.radius_m)  sekolahRadius = parseFloat(d.radius_m);
+        tpAktif  = (d.tahun_ajaran || '').trim();
+        smtAktif = (d.semester || '').trim();
       }
-    } catch(e) { console.warn('Profil_Sekolah tidak dimuat:', e); }
+      profilSudahDimuat = true;
+    } catch(e) { console.warn('Profil_Sekolah tidak dimuat:', e); profilSudahDimuat = true; }
   }
 
   async function muatBankMateri(idMapel, namaKelas) {
