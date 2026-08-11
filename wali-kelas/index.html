@@ -586,6 +586,18 @@ const tahunAjaranSaatIni = () => {
 };
 const semesterSaatIni = () => (new Date().getMonth()+1) >= 7 ? 'Ganjil' : 'Genap';
 
+// TP/Semester aktif dari Profil_Sekolah (portal admin)
+let tpAktif = '', smtAktif = '';
+async function muatTpAktif() {
+  try {
+    const ps = await getDoc(doc(db,'Profil_Sekolah','profil_utama'));
+    if (ps.exists()) {
+      tpAktif  = (ps.data().tahun_ajaran || '').trim();
+      smtAktif = (ps.data().semester || '').trim();
+    }
+  } catch(e) {}
+}
+
 function toast(msg) {
   const el = document.getElementById('toast');
   el.textContent = msg; el.classList.add('show');
@@ -630,6 +642,7 @@ window.loginWali = async function() {
     document.getElementById('hwk').textContent = `Wali Kelas ${rombelData.nama_kelas||''}`;
     document.getElementById('lo').style.display = 'none';
 
+    await muatTpAktif();
     await Promise.all([muatSiswa(), muatBeranda(), muatMateri(), muatBolos(), muatPelanggaranWali()]);
     isiFilterMapel();
 
@@ -637,8 +650,8 @@ window.loginWali = async function() {
       db,
       mode: 'wali_kelas',
       currentUser: { id: waliData.id, nama: (waliData.nama_lengkap||'').split(',')[0] },
-      tahunAjaran: tahunAjaranSaatIni(),
-      semester: semesterSaatIni(),
+      tahunAjaran: tpAktif || tahunAjaranSaatIni(),
+      semester: smtAktif || semesterSaatIni(),
       getSiswaList: async (teks) => {
         const kelasIni = rombelData?.nama_kelas || '';
         const sumber = teks
