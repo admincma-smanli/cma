@@ -1021,30 +1021,7 @@
         <button class="btn-ekspor" style="background:var(--hijau);color:white;" onclick="document.getElementById('imp-jadwal-file').click()">📥 Import Excel</button>
         <input type="file" id="imp-jadwal-file" accept=".xlsx,.xls" style="display:none" onchange="importJadwalExcel(this)">
         <button class="btn-ekspor" style="background:var(--biru-tua);color:white;" onclick="infoFormatJadwal()">📋 Info Format</button>
-        <button class="btn-ekspor" style="background:#6A1B9A;color:white;" onclick="tampilFormSalinJadwal()">🔄 Salin dari TP Lalu</button>
         <button class="btn-ekspor" style="background:var(--oranye);color:white;" onclick="tampilFormJadwal(null)">+ Tambah Jadwal</button>
-      </div>
-    </div>
-
-    <!-- FORM SALIN JADWAL DARI TP/SEMESTER SEBELUMNYA -->
-    <div id="form-salin-jadwal-wrap" style="display:none;margin-bottom:20px;">
-      <div class="tabel-card" style="padding:20px;border:2px solid #6A1B9A;">
-        <div class="section-judul" style="margin-bottom:6px;">🔄 Salin Jadwal dari TP / Semester Sebelumnya</div>
-        <div style="font-size:12px;color:var(--abu);margin-bottom:14px;line-height:1.6">
-          Semua jadwal dari sumber akan disalin ke TP/semester baru (guru, hari, kelas, mapel, dan jam tetap sama).
-          Data sumber <strong>tidak diubah atau dihapus</strong>. Setelah disalin, edit/hapus baris yang berubah di semester baru.
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
-          <div><label class="form-lbl">Sumber (TP · Semester) *</label><select class="filter-select" id="sj-sumber" style="width:100%;margin-top:4px"><option value="">Pilih sumber</option></select></div>
-          <div><label class="form-lbl">Tahun Ajaran Baru *</label><input type="text" class="filter-input" id="sj-tahun-baru" placeholder="2026/2027" style="width:100%;margin-top:4px"></div>
-          <div><label class="form-lbl">Semester Baru *</label><select class="filter-select" id="sj-semester-baru" style="width:100%;margin-top:4px"><option>Ganjil</option><option>Genap</option></select></div>
-        </div>
-        <div id="sj-preview" style="font-size:12px;color:var(--biru-tua);font-weight:600;margin-top:10px;"></div>
-        <div style="display:flex;gap:8px;margin-top:14px;">
-          <button class="btn-ekspor" id="sj-btn-proses" style="background:#6A1B9A;color:white;" onclick="prosesSalinJadwal()">🔄 Salin Sekarang</button>
-          <button class="btn-ekspor" style="background:#f0f0f0;color:var(--teks);" onclick="tutupFormSalinJadwal()">Batal</button>
-        </div>
-        <div id="salin-jadwal-error" style="color:var(--merah);font-size:13px;margin-top:8px;font-weight:600;"></div>
       </div>
     </div>
 
@@ -1108,6 +1085,29 @@
           <option value="2026/2027">2026/2027</option>
         </select>
         <button class="btn-ekspor btn-excel" onclick="eksporRosterExcel()">📊 Ekspor Excel</button>
+        <button class="btn-ekspor" style="background:#6A1B9A;color:white;" onclick="tampilFormSalinJadwal()">🔄 Salin dari TP Lalu</button>
+      </div>
+    </div>
+
+    <!-- FORM SALIN ROSTER/JADWAL DARI TP/SEMESTER SEBELUMNYA -->
+    <div id="form-salin-jadwal-wrap" style="display:none;margin-bottom:16px;">
+      <div class="tabel-card" style="padding:20px;border:2px solid #6A1B9A;">
+        <div class="section-judul" style="margin-bottom:6px;">🔄 Salin Roster dari TP / Semester Sebelumnya</div>
+        <div style="font-size:12px;color:var(--abu);margin-bottom:14px;line-height:1.6">
+          Semua jadwal dari sumber akan disalin ke TP/semester baru (guru, hari, kelas, mapel, dan slot jam tetap sama).
+          Data sumber <strong>tidak diubah atau dihapus</strong>. Setelah disalin, cukup edit slot yang berubah di roster baru.
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+          <div><label class="form-lbl">Sumber (TP · Semester) *</label><select class="filter-select" id="sj-sumber" style="width:100%;margin-top:4px"><option value="">Memuat...</option></select></div>
+          <div><label class="form-lbl">Tahun Ajaran Baru *</label><input type="text" class="filter-input" id="sj-tahun-baru" placeholder="2026/2027" style="width:100%;margin-top:4px"></div>
+          <div><label class="form-lbl">Semester Baru *</label><select class="filter-select" id="sj-semester-baru" style="width:100%;margin-top:4px"><option>Ganjil</option><option>Genap</option></select></div>
+        </div>
+        <div id="sj-preview" style="font-size:12px;color:var(--biru-tua);font-weight:600;margin-top:10px;"></div>
+        <div style="display:flex;gap:8px;margin-top:14px;">
+          <button class="btn-ekspor" id="sj-btn-proses" style="background:#6A1B9A;color:white;" onclick="prosesSalinJadwal()">🔄 Salin Sekarang</button>
+          <button class="btn-ekspor" style="background:#f0f0f0;color:var(--teks);" onclick="tutupFormSalinJadwal()">Batal</button>
+        </div>
+        <div id="salin-jadwal-error" style="color:var(--merah);font-size:13px;margin-top:8px;font-weight:600;"></div>
       </div>
     </div>
 
@@ -4644,40 +4644,58 @@
   };
 
   // ══════════════════════════════════════
-  // SALIN JADWAL DARI TP/SEMESTER SEBELUMNYA
+  // SALIN ROSTER/JADWAL DARI TP/SEMESTER SEBELUMNYA
   // ══════════════════════════════════════
-  window.tampilFormSalinJadwal = function() {
-    const wrap = document.getElementById('form-salin-jadwal-wrap');
+  let salinSemuaJadwal = []; // cache dokumen segar dari Firestore saat form dibuka
+
+  window.tampilFormSalinJadwal = async function() {
+    const wrap  = document.getElementById('form-salin-jadwal-wrap');
     const errEl = document.getElementById('salin-jadwal-error');
+    const sel   = document.getElementById('sj-sumber');
     errEl.textContent = '';
     document.getElementById('sj-preview').textContent = '';
-    // Kumpulkan kombinasi unik tahun_ajaran + semester dari data jadwal yang ada
+    wrap.style.display = 'block';
+    wrap.scrollIntoView({ behavior:'smooth' });
+    sel.innerHTML = '<option value="">⏳ Memuat data jadwal...</option>';
+
+    try {
+      // Ambil SEGAR dari Firestore agar termasuk jadwal yang baru disusun lewat roster
+      const snap = await getDocs(collection(db, 'Jadwal_Pelajaran'));
+      salinSemuaJadwal = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    } catch(e) {
+      sel.innerHTML = '<option value="">— Gagal memuat —</option>';
+      errEl.textContent = 'Gagal memuat data: ' + e.message;
+      return;
+    }
+
+    // Kumpulkan kombinasi unik tahun_ajaran + semester
     const komboMap = {};
-    allJadwal.forEach(j => {
+    salinSemuaJadwal.forEach(j => {
       const ta  = j.tahun_ajaran || '(tanpa TP)';
       const smt = j.semester || '(tanpa semester)';
       const key = ta + '||' + smt;
       komboMap[key] = (komboMap[key] || 0) + 1;
     });
     const kombo = Object.entries(komboMap).sort((a,b) => b[0].localeCompare(a[0]));
-    const sel = document.getElementById('sj-sumber');
     if (!kombo.length) {
-      sel.innerHTML = '<option value="">— Belum ada data jadwal —</option>';
-    } else {
-      sel.innerHTML = '<option value="">Pilih sumber</option>' +
-        kombo.map(([key, n]) => {
-          const [ta, smt] = key.split('||');
-          return `<option value="${key}">${ta} · ${smt} (${n} jadwal)</option>`;
-        }).join('');
+      sel.innerHTML = '<option value="">— Belum ada data jadwal sama sekali —</option>';
+      errEl.textContent = 'Belum ada jadwal yang bisa disalin. Susun roster dulu untuk satu TP/semester.';
+      return;
     }
+    sel.innerHTML = '<option value="">Pilih sumber</option>' +
+      kombo.map(([key, n]) => {
+        const [ta, smt] = key.split('||');
+        return `<option value="${key}">${ta} · ${smt} (${n} jadwal)</option>`;
+      }).join('');
     sel.onchange = updatePreviewSalinJadwal;
-    // Saran tahun ajaran baru: naikkan 1 tahun dari sumber terbaru
-    const taTerbaru = kombo.length ? kombo[0][0].split('||')[0] : '';
+
+    // Saran target: ikuti filter roster yang sedang aktif, fallback naikkan 1 tahun dari sumber terbaru
+    const rTahun = document.getElementById('roster-filter-tahun')?.value || '';
+    const rSmt   = document.getElementById('roster-filter-smt')?.value || 'Ganjil';
+    const taTerbaru = kombo[0][0].split('||')[0];
     const m = taTerbaru.match(/^(\d{4})\/(\d{4})$/);
-    document.getElementById('sj-tahun-baru').value = m ? `${+m[1]+1}/${+m[2]+1}` : '';
-    document.getElementById('form-jadwal-wrap').style.display = 'none';
-    wrap.style.display = 'block';
-    wrap.scrollIntoView({ behavior:'smooth' });
+    document.getElementById('sj-tahun-baru').value = rTahun || (m ? `${+m[1]+1}/${+m[2]+1}` : '');
+    document.getElementById('sj-semester-baru').value = rSmt;
   };
 
   function updatePreviewSalinJadwal() {
@@ -4685,7 +4703,7 @@
     const prev = document.getElementById('sj-preview');
     if (!key) { prev.textContent = ''; return; }
     const [ta, smt] = key.split('||');
-    const n = allJadwal.filter(j => (j.tahun_ajaran||'(tanpa TP)') === ta && (j.semester||'(tanpa semester)') === smt).length;
+    const n = salinSemuaJadwal.filter(j => (j.tahun_ajaran||'(tanpa TP)') === ta && (j.semester||'(tanpa semester)') === smt).length;
     prev.textContent = `📋 ${n} jadwal akan disalin dari ${ta} · ${smt}`;
   }
 
@@ -4709,12 +4727,12 @@
       errEl.textContent = 'Sumber dan tujuan sama! Pilih TP/semester tujuan yang berbeda.'; return;
     }
 
-    const sumber = allJadwal.filter(j =>
+    const sumber = salinSemuaJadwal.filter(j =>
       (j.tahun_ajaran||'(tanpa TP)') === taSumber && (j.semester||'(tanpa semester)') === smtSumber);
     if (!sumber.length) { errEl.textContent = 'Tidak ada jadwal pada sumber tersebut.'; return; }
 
     // Cek apakah tujuan sudah punya jadwal → cegah duplikat tak sengaja
-    const sudahAda = allJadwal.filter(j => j.tahun_ajaran === taBaru && j.semester === smtBaru).length;
+    const sudahAda = salinSemuaJadwal.filter(j => j.tahun_ajaran === taBaru && j.semester === smtBaru).length;
     let pesanKonfirm = `Salin ${sumber.length} jadwal dari ${taSumber} · ${smtSumber} → ${taBaru} · ${smtBaru}?`;
     if (sudahAda) pesanKonfirm += `\n\n⚠ PERHATIAN: Tujuan sudah memiliki ${sudahAda} jadwal. Hasil salinan akan DITAMBAHKAN (bisa dobel).`;
     if (!confirm(pesanKonfirm)) return;
@@ -4736,10 +4754,24 @@
         });
         await batch.commit();
       }
+      salinSemuaJadwal.push(...hasilBaru);
       allJadwal.push(...hasilBaru);
-      renderJadwal();
       tutupFormSalinJadwal();
       tampilToast(`✅ ${hasilBaru.length} jadwal berhasil disalin ke ${taBaru} · ${smtBaru}!`);
+
+      // Arahkan filter roster ke TP/semester baru & muat ulang grid agar hasil langsung terlihat
+      const selTahun = document.getElementById('roster-filter-tahun');
+      const selSmt   = document.getElementById('roster-filter-smt');
+      if (selTahun) {
+        if (![...selTahun.options].some(o => o.value === taBaru)) {
+          const opt = document.createElement('option');
+          opt.value = taBaru; opt.textContent = taBaru;
+          selTahun.appendChild(opt);
+        }
+        selTahun.value = taBaru;
+      }
+      if (selSmt) selSmt.value = smtBaru;
+      if (typeof rosterMuat === 'function') rosterMuat();
     } catch(e) {
       errEl.textContent = 'Gagal menyalin: ' + e.message;
     } finally {
