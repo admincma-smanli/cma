@@ -752,7 +752,7 @@ async function muatBeranda() {
 
   // Agenda hari ini
   const snAgd = await getDocs(query(collection(db,'Agenda_Harian'), where('tanggal','==',tgl)));
-  const agdList = snAgd.docs.map(d=>d.data()).filter(a => normKelas(a.kelas) === normKelas(kelas))
+  const agdList = snAgd.docs.map(d=>d.data()).filter(a => normKelas(a.kelas) === normKelas(kelas) && !a.is_lanjutan)
     .sort((a,b)=>(a.slot_urutan||0)-(b.slot_urutan||0));
   const agdEl = document.getElementById('agd-hari-ini');
   if(!agdList.length) {
@@ -945,7 +945,7 @@ window.muatAgenda = async function() {
   const kelas = rombelData?.nama_kelas||'';
   const snap = await getDocs(query(collection(db,'Agenda_Harian'),
     where('tanggal','>=',dari), where('tanggal','<=',sampai)));
-  agdData = snap.docs.map(d=>d.data()).filter(d => normKelas(d.kelas) === normKelas(kelas))
+  agdData = snap.docs.map(d=>d.data()).filter(d => normKelas(d.kelas) === normKelas(kelas) && !d.is_lanjutan)
     .sort((a,b)=>a.tanggal.localeCompare(b.tanggal)||(a.slot_urutan||0)-(b.slot_urutan||0));
   isiFilterMapel();
   renderAgenda();
