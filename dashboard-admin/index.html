@@ -1021,9 +1021,33 @@
         <button class="btn-ekspor" style="background:var(--hijau);color:white;" onclick="document.getElementById('imp-jadwal-file').click()">📥 Import Excel</button>
         <input type="file" id="imp-jadwal-file" accept=".xlsx,.xls" style="display:none" onchange="importJadwalExcel(this)">
         <button class="btn-ekspor" style="background:var(--biru-tua);color:white;" onclick="infoFormatJadwal()">📋 Info Format</button>
+        <button class="btn-ekspor" style="background:#6A1B9A;color:white;" onclick="tampilFormSalinJadwal()">🔄 Salin dari TP Lalu</button>
         <button class="btn-ekspor" style="background:var(--oranye);color:white;" onclick="tampilFormJadwal(null)">+ Tambah Jadwal</button>
       </div>
     </div>
+
+    <!-- FORM SALIN JADWAL DARI TP/SEMESTER SEBELUMNYA -->
+    <div id="form-salin-jadwal-wrap" style="display:none;margin-bottom:20px;">
+      <div class="tabel-card" style="padding:20px;border:2px solid #6A1B9A;">
+        <div class="section-judul" style="margin-bottom:6px;">🔄 Salin Jadwal dari TP / Semester Sebelumnya</div>
+        <div style="font-size:12px;color:var(--abu);margin-bottom:14px;line-height:1.6">
+          Semua jadwal dari sumber akan disalin ke TP/semester baru (guru, hari, kelas, mapel, dan jam tetap sama).
+          Data sumber <strong>tidak diubah atau dihapus</strong>. Setelah disalin, edit/hapus baris yang berubah di semester baru.
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+          <div><label class="form-lbl">Sumber (TP · Semester) *</label><select class="filter-select" id="sj-sumber" style="width:100%;margin-top:4px"><option value="">Pilih sumber</option></select></div>
+          <div><label class="form-lbl">Tahun Ajaran Baru *</label><input type="text" class="filter-input" id="sj-tahun-baru" placeholder="2026/2027" style="width:100%;margin-top:4px"></div>
+          <div><label class="form-lbl">Semester Baru *</label><select class="filter-select" id="sj-semester-baru" style="width:100%;margin-top:4px"><option>Ganjil</option><option>Genap</option></select></div>
+        </div>
+        <div id="sj-preview" style="font-size:12px;color:var(--biru-tua);font-weight:600;margin-top:10px;"></div>
+        <div style="display:flex;gap:8px;margin-top:14px;">
+          <button class="btn-ekspor" id="sj-btn-proses" style="background:#6A1B9A;color:white;" onclick="prosesSalinJadwal()">🔄 Salin Sekarang</button>
+          <button class="btn-ekspor" style="background:#f0f0f0;color:var(--teks);" onclick="tutupFormSalinJadwal()">Batal</button>
+        </div>
+        <div id="salin-jadwal-error" style="color:var(--merah);font-size:13px;margin-top:8px;font-weight:600;"></div>
+      </div>
+    </div>
+
     <div id="form-jadwal-wrap" style="display:none;margin-bottom:20px;">
       <div class="tabel-card" style="padding:20px;">
         <div class="section-judul" id="form-jadwal-judul" style="margin-bottom:12px;">➕ Tambah Jadwal Baru</div>
@@ -1645,7 +1669,7 @@
 
   <!-- FORM TAMBAH MANUAL -->
   <div id="form-materi" style="display:none" class="form-materi-wrap">
-    <div style="font-size:13px;font-weight:700;margin-bottom:12px;color:var(--oranye-gelap)">➕ Tambah Materi Manual</div>
+    <div id="form-materi-judul" style="font-size:13px;font-weight:700;margin-bottom:12px;color:var(--oranye-gelap)">➕ Tambah Materi Manual</div>
     <div class="form-materi-grid">
       <div>
         <label class="fm-lbl">No</label>
@@ -1679,7 +1703,7 @@
     </div>
     <div style="display:flex;gap:8px">
       <button class="btn-aksi primary" onclick="simpanMateriManual()">💾 Simpan</button>
-      <button class="btn-aksi" onclick="document.getElementById('form-materi').style.display='none'">Batal</button>
+      <button class="btn-aksi" onclick="batalFormMateri()">Batal</button>
     </div>
   </div>
 
@@ -1722,6 +1746,7 @@
   </div>
   <!-- Form tambah siswa -->
   <div id="admin-form-siswa" style="display:none;background:#F8F9FA;border-radius:12px;padding:14px;margin-bottom:14px;border:1px solid var(--border)">
+    <div id="admin-form-siswa-judul" style="font-size:13px;font-weight:700;color:var(--oranye-gelap);margin-bottom:10px">➕ Tambah Siswa</div>
     <div style="display:grid;grid-template-columns:1fr 2fr 1fr 1fr;gap:10px;margin-bottom:10px">
       <div><label style="font-size:11px;font-weight:700;color:var(--abu);display:block;margin-bottom:3px">NIS</label><input type="text" id="as-nis" class="form-input" placeholder="2324001"></div>
       <div><label style="font-size:11px;font-weight:700;color:var(--abu);display:block;margin-bottom:3px">Nama Lengkap</label><input type="text" id="as-nama" class="form-input" placeholder="Nama siswa"></div>
@@ -1730,7 +1755,7 @@
     </div>
     <div style="display:flex;gap:8px">
       <button class="btn-ekspor primary" onclick="adminSimpanSiswa()">💾 Simpan</button>
-      <button class="btn-ekspor" onclick="document.getElementById('admin-form-siswa').style.display='none'">Batal</button>
+      <button class="btn-ekspor" onclick="adminBatalSiswa()">Batal</button>
     </div>
   </div>
   <div class="kartu" style="padding:0">
@@ -1959,7 +1984,7 @@
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import {
     getFirestore, collection, query, where,
-    getDocs, orderBy, limit, addDoc, deleteDoc, doc, writeBatch, setDoc
+    getDocs, orderBy, limit, addDoc, deleteDoc, doc, updateDoc, writeBatch, setDoc
   } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
   import {
     getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged
@@ -2309,7 +2334,10 @@
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;">
           <span class="guru-status ${g.status_aktif?'aktif':'nonaktif'}">${g.status_aktif?'Aktif':'Nonaktif'}</span>
-          <button onclick="editGuru('${id}')" style="font-size:11px;padding:3px 10px;border:1px solid var(--border);border-radius:6px;background:transparent;cursor:pointer;color:var(--oranye);font-weight:700">✏️ Edit</button>
+          <div style="display:flex;gap:5px;">
+            <button onclick="editGuru('${id}')" style="font-size:11px;padding:3px 10px;border:1px solid var(--border);border-radius:6px;background:transparent;cursor:pointer;color:var(--oranye);font-weight:700">✏️ Edit</button>
+            <button onclick="hapusGuru('${id}')" style="font-size:11px;padding:3px 10px;border:1px solid #FFCDD2;border-radius:6px;background:#FFEBEE;cursor:pointer;color:#C62828;font-weight:700">🗑 Hapus</button>
+          </div>
         </div>
       </div>`;
     }).join('');
@@ -2317,7 +2345,7 @@
 
   function renderJadwal() {
     const tbody = document.getElementById('tabel-jadwal');
-    if (!allJadwal.length) { tbody.innerHTML = `<tr><td colspan="7" class="loading-inline">Belum ada jadwal.</td></tr>`; return; }
+    if (!allJadwal.length) { tbody.innerHTML = `<tr><td colspan="8" class="loading-inline">Belum ada jadwal.</td></tr>`; return; }
     const urutan = ['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
     const sorted = [...allJadwal].sort((a,b) => {
       const hi = urutan.indexOf(a.hari), hj = urutan.indexOf(b.hari);
@@ -2335,7 +2363,7 @@
         <td style="text-align:center">${j.jam_ke||'—'}</td>
         <td style="font-family:'DM Mono',monospace;font-size:12px">${j.jam_mulai||''}–${j.jam_selesai||''}</td>
         <td>${j.semester||'—'}</td>
-        <td><button onclick="editJadwal('${j.id}')" style="font-size:11px;padding:3px 10px;border:1px solid var(--border);border-radius:6px;background:transparent;cursor:pointer;color:var(--oranye);font-weight:700">✏️ Edit</button></td>
+        <td style="white-space:nowrap"><button onclick="editJadwal('${j.id}')" style="font-size:11px;padding:3px 10px;border:1px solid var(--border);border-radius:6px;background:transparent;cursor:pointer;color:var(--oranye);font-weight:700">✏️ Edit</button> <button onclick="hapusJadwal('${j.id}')" style="font-size:11px;padding:3px 10px;border:1px solid #FFCDD2;border-radius:6px;background:#FFEBEE;cursor:pointer;color:#C62828;font-weight:700">🗑</button></td>
       </tr>`;
     }).join('');
   }
@@ -3089,7 +3117,10 @@
       return `<div class="rombel-card">
         <div style="display:flex;align-items:center;justify-content:space-between;">
           <div class="rombel-nama">${r.nama_kelas}</div>
-          <button onclick="editRombel('${r.id}')" style="font-size:11px;padding:2px 8px;border:1px solid var(--border);border-radius:6px;background:transparent;cursor:pointer;color:var(--oranye);font-weight:700">✏️</button>
+          <div style="display:flex;gap:4px;">
+            <button onclick="editRombel('${r.id}')" style="font-size:11px;padding:2px 8px;border:1px solid var(--border);border-radius:6px;background:transparent;cursor:pointer;color:var(--oranye);font-weight:700" title="Edit">✏️</button>
+            <button onclick="hapusRombel('${r.id}')" style="font-size:11px;padding:2px 8px;border:1px solid #FFCDD2;border-radius:6px;background:#FFEBEE;cursor:pointer;color:#C62828;font-weight:700" title="Hapus">🗑</button>
+          </div>
         </div>
         <div class="rombel-info">
           <span class="fase-badge fase-${(r.fase||'e').toLowerCase()}">${r.fase||'?'}</span>
@@ -3135,6 +3166,18 @@
   };
 
   window.editRombel = function(id) { tampilFormRombel(id); };
+
+  window.hapusRombel = async function(id) {
+    const r = allRombel.find(x => x.id === id);
+    if (!r) return;
+    if (!confirm(`Hapus kelas "${r.nama_kelas||'—'}"?\n\n⚠ Data siswa & jadwal yang memakai kelas ini TIDAK ikut terhapus. Lanjutkan?`)) return;
+    try {
+      await deleteDoc(doc(db, 'Rombel', id));
+      allRombel = allRombel.filter(x => x.id !== id);
+      renderRombelGrid();
+      tampilToast('✅ Kelas berhasil dihapus!');
+    } catch(e) { tampilToast('❌ Gagal hapus: ' + e.message); }
+  };
 
   window.simpanRombel = async function() {
     const nama = document.getElementById('fr-nama').value.trim();
@@ -4549,6 +4592,135 @@
   window.editGuru = function(id) { tampilFormGuru(id); };
   window.editJadwal = function(id) { tampilFormJadwal(id); };
 
+  window.hapusGuru = async function(id) {
+    const g = cacheGuru[id];
+    if (!g) return;
+    if (!confirm(`Hapus guru "${g.nama_lengkap||'—'}"?\n\n⚠ Data agenda & jadwal milik guru ini TIDAK ikut terhapus, tapi namanya akan tampil "—" di laporan. Lanjutkan?`)) return;
+    try {
+      await deleteDoc(doc(db, 'Data_Guru', id));
+      delete cacheGuru[id];
+      renderGuru();
+      tampilToast('✅ Guru berhasil dihapus!');
+    } catch(e) { tampilToast('❌ Gagal hapus: ' + e.message); }
+  };
+
+  window.hapusJadwal = async function(id) {
+    const j = allJadwal.find(x => x.id === id);
+    if (!j) return;
+    const namaGuru = (cacheGuru[j.id_guru]||{}).nama_lengkap || '—';
+    if (!confirm(`Hapus jadwal ${j.hari} · ${j.kelas} · ${j.mata_pelajaran||j.mapel||''} (${namaGuru})?`)) return;
+    try {
+      await deleteDoc(doc(db, 'Jadwal_Pelajaran', id));
+      allJadwal = allJadwal.filter(x => x.id !== id);
+      renderJadwal();
+      tampilToast('✅ Jadwal dihapus!');
+    } catch(e) { tampilToast('❌ Gagal hapus: ' + e.message); }
+  };
+
+  // ══════════════════════════════════════
+  // SALIN JADWAL DARI TP/SEMESTER SEBELUMNYA
+  // ══════════════════════════════════════
+  window.tampilFormSalinJadwal = function() {
+    const wrap = document.getElementById('form-salin-jadwal-wrap');
+    const errEl = document.getElementById('salin-jadwal-error');
+    errEl.textContent = '';
+    document.getElementById('sj-preview').textContent = '';
+    // Kumpulkan kombinasi unik tahun_ajaran + semester dari data jadwal yang ada
+    const komboMap = {};
+    allJadwal.forEach(j => {
+      const ta  = j.tahun_ajaran || '(tanpa TP)';
+      const smt = j.semester || '(tanpa semester)';
+      const key = ta + '||' + smt;
+      komboMap[key] = (komboMap[key] || 0) + 1;
+    });
+    const kombo = Object.entries(komboMap).sort((a,b) => b[0].localeCompare(a[0]));
+    const sel = document.getElementById('sj-sumber');
+    if (!kombo.length) {
+      sel.innerHTML = '<option value="">— Belum ada data jadwal —</option>';
+    } else {
+      sel.innerHTML = '<option value="">Pilih sumber</option>' +
+        kombo.map(([key, n]) => {
+          const [ta, smt] = key.split('||');
+          return `<option value="${key}">${ta} · ${smt} (${n} jadwal)</option>`;
+        }).join('');
+    }
+    sel.onchange = updatePreviewSalinJadwal;
+    // Saran tahun ajaran baru: naikkan 1 tahun dari sumber terbaru
+    const taTerbaru = kombo.length ? kombo[0][0].split('||')[0] : '';
+    const m = taTerbaru.match(/^(\d{4})\/(\d{4})$/);
+    document.getElementById('sj-tahun-baru').value = m ? `${+m[1]+1}/${+m[2]+1}` : '';
+    document.getElementById('form-jadwal-wrap').style.display = 'none';
+    wrap.style.display = 'block';
+    wrap.scrollIntoView({ behavior:'smooth' });
+  };
+
+  function updatePreviewSalinJadwal() {
+    const key = document.getElementById('sj-sumber').value;
+    const prev = document.getElementById('sj-preview');
+    if (!key) { prev.textContent = ''; return; }
+    const [ta, smt] = key.split('||');
+    const n = allJadwal.filter(j => (j.tahun_ajaran||'(tanpa TP)') === ta && (j.semester||'(tanpa semester)') === smt).length;
+    prev.textContent = `📋 ${n} jadwal akan disalin dari ${ta} · ${smt}`;
+  }
+
+  window.tutupFormSalinJadwal = function() {
+    document.getElementById('form-salin-jadwal-wrap').style.display = 'none';
+  };
+
+  window.prosesSalinJadwal = async function() {
+    const key       = document.getElementById('sj-sumber').value;
+    const taBaru    = document.getElementById('sj-tahun-baru').value.trim();
+    const smtBaru   = document.getElementById('sj-semester-baru').value;
+    const errEl     = document.getElementById('salin-jadwal-error');
+    const btn       = document.getElementById('sj-btn-proses');
+    errEl.textContent = '';
+    if (!key)    { errEl.textContent = 'Pilih sumber TP/semester!'; return; }
+    if (!taBaru) { errEl.textContent = 'Isi tahun ajaran baru!'; return; }
+    if (!/^\d{4}\/\d{4}$/.test(taBaru)) { errEl.textContent = 'Format tahun ajaran: 2026/2027'; return; }
+
+    const [taSumber, smtSumber] = key.split('||');
+    if (taSumber === taBaru && smtSumber === smtBaru) {
+      errEl.textContent = 'Sumber dan tujuan sama! Pilih TP/semester tujuan yang berbeda.'; return;
+    }
+
+    const sumber = allJadwal.filter(j =>
+      (j.tahun_ajaran||'(tanpa TP)') === taSumber && (j.semester||'(tanpa semester)') === smtSumber);
+    if (!sumber.length) { errEl.textContent = 'Tidak ada jadwal pada sumber tersebut.'; return; }
+
+    // Cek apakah tujuan sudah punya jadwal → cegah duplikat tak sengaja
+    const sudahAda = allJadwal.filter(j => j.tahun_ajaran === taBaru && j.semester === smtBaru).length;
+    let pesanKonfirm = `Salin ${sumber.length} jadwal dari ${taSumber} · ${smtSumber} → ${taBaru} · ${smtBaru}?`;
+    if (sudahAda) pesanKonfirm += `\n\n⚠ PERHATIAN: Tujuan sudah memiliki ${sudahAda} jadwal. Hasil salinan akan DITAMBAHKAN (bisa dobel).`;
+    if (!confirm(pesanKonfirm)) return;
+
+    btn.disabled = true; btn.textContent = '⏳ Menyalin...';
+    try {
+      // Salin per batch (batas Firestore 500 operasi per batch)
+      const CHUNK = 400;
+      const hasilBaru = [];
+      for (let i = 0; i < sumber.length; i += CHUNK) {
+        const batch = writeBatch(db);
+        const potongan = sumber.slice(i, i + CHUNK);
+        potongan.forEach(j => {
+          const { id, ...tanpaId } = j;
+          const data = { ...tanpaId, tahun_ajaran: taBaru, semester: smtBaru };
+          const ref = doc(collection(db, 'Jadwal_Pelajaran'));
+          batch.set(ref, data);
+          hasilBaru.push({ id: ref.id, ...data });
+        });
+        await batch.commit();
+      }
+      allJadwal.push(...hasilBaru);
+      renderJadwal();
+      tutupFormSalinJadwal();
+      tampilToast(`✅ ${hasilBaru.length} jadwal berhasil disalin ke ${taBaru} · ${smtBaru}!`);
+    } catch(e) {
+      errEl.textContent = 'Gagal menyalin: ' + e.message;
+    } finally {
+      btn.disabled = false; btn.textContent = '🔄 Salin Sekarang';
+    }
+  };
+
   // expose semua fungsi ke global (wajib untuk onclick di HTML + module scope)
   window.loginAdmin  = loginAdmin;
   window.initJamBaku = initJamBaku;
@@ -4687,12 +4859,14 @@
               <div class="pokok-num">${p.no}</div>
               <div class="pokok-nama">${p.nama||'—'}</div>
               <span class="pokok-badge">${subs.length} sub materi</span>
+              <button class="btn-hapus-materi" onclick="editMateri('${p.id}')" style="color:var(--oranye);border-color:var(--border);background:transparent" title="Edit">✏️ Edit</button>
               <button class="btn-hapus-materi" onclick="hapusMateri('${p.id}')">✕ Hapus</button>
             </div>
             ${subs.length ? `<div class="sub-list">${subs.map(s =>
               `<div class="sub-item">
                 <div class="sub-num">${s.no}</div>
                 <div class="sub-nama">${s.nama||'—'}</div>
+                <button class="btn-hapus-materi" onclick="editMateri('${s.id}')" style="color:var(--oranye);border-color:var(--border);background:transparent" title="Edit">✏️</button>
                 <button class="btn-hapus-materi" onclick="hapusMateri('${s.id}')">✕</button>
               </div>`).join('')}
             </div>` : ''}
@@ -4710,9 +4884,41 @@
       }).join('');
   }
 
+  let editMateriId = null;
+
   window.tampilFormMateri = function() {
+    editMateriId = null;
+    document.getElementById('form-materi-judul').textContent = '➕ Tambah Materi Manual';
+    ['fm-no','fm-nama'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('form-materi').style.display = 'block';
     document.getElementById('form-materi').scrollIntoView({ behavior:'smooth' });
+  };
+
+  window.editMateri = function(id) {
+    const m = allMateriKurikulum.find(x => x.id === id);
+    if (!m) return;
+    editMateriId = id;
+    document.getElementById('form-materi-judul').textContent = '✏️ Edit Materi — No. ' + (m.no||'');
+    document.getElementById('fm-no').value    = m.no||'';
+    document.getElementById('fm-nama').value  = m.nama||'';
+    document.getElementById('fm-kelas').value = m.kelas||'X';
+    document.getElementById('fm-semester').value = m.semester||'Ganjil';
+    // Cocokkan mapel: prioritas id_mapel, fallback cari berdasarkan nama
+    const selMapel = document.getElementById('fm-mapel');
+    if (m.id_mapel && allMapel.find(x => x.id === m.id_mapel)) {
+      selMapel.value = m.id_mapel;
+    } else {
+      const namaCari = (m.nama_mapel||m.mapel||'').toLowerCase();
+      const cocok = allMapel.find(x => (x.nama_mapel||'').toLowerCase() === namaCari);
+      selMapel.value = cocok ? cocok.id : '';
+    }
+    document.getElementById('form-materi').style.display = 'block';
+    document.getElementById('form-materi').scrollIntoView({ behavior:'smooth' });
+  };
+
+  window.batalFormMateri = function() {
+    editMateriId = null;
+    document.getElementById('form-materi').style.display = 'none';
   };
 
   window.simpanMateriManual = async function() {
@@ -4725,7 +4931,7 @@
     const mapelData = allMapel.find(m => m.id === idMapel);
     const namaMapel = mapelData?.nama_mapel || mapelData?.nama || mapelData?.kode_mapel || idMapel;
     const isPokok   = !String(no).includes('.');
-    await addDoc(collection(db, 'Materi_Kurikulum'), {
+    const data = {
       no, nama,
       kelas, fase: kelas==='X'?'E':'F',
       id_mapel:   idMapel,
@@ -4734,11 +4940,20 @@
       semester:   smt,
       is_pokok:   isPokok,
       timestamp:  new Date().toISOString()
-    });
-    tampilToast('✅ Materi berhasil disimpan');
-    document.getElementById('form-materi').style.display = 'none';
-    ['fm-no','fm-nama'].forEach(id => document.getElementById(id).value = '');
-    await muatBankMateri();
+    };
+    try {
+      if (editMateriId) {
+        await updateDoc(doc(db, 'Materi_Kurikulum', editMateriId), data);
+        tampilToast('✅ Materi berhasil diperbarui');
+      } else {
+        await addDoc(collection(db, 'Materi_Kurikulum'), data);
+        tampilToast('✅ Materi berhasil disimpan');
+      }
+      editMateriId = null;
+      document.getElementById('form-materi').style.display = 'none';
+      ['fm-no','fm-nama'].forEach(id => document.getElementById(id).value = '');
+      await muatBankMateri();
+    } catch(e) { tampilToast('❌ Gagal: ' + e.message); }
   };
 
   window.hapusMateri = async function(id) {
@@ -5095,14 +5310,40 @@
       <td style="font-weight:600">${s.nama||'—'}</td>
       <td><span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:6px;background:var(--biru-muda);color:var(--biru-tua)">${s.kelas||'—'}</span></td>
       <td>${s.jk||'—'}</td>
-      <td>
+      <td style="white-space:nowrap">
+        <button onclick="adminEditSiswa('${s.docId}')" style="font-size:10px;padding:2px 7px;border:1px solid var(--border);border-radius:5px;background:transparent;color:var(--oranye);cursor:pointer;font-weight:700;font-family:'Plus Jakarta Sans',sans-serif">✏️ Edit</button>
         <button onclick="adminHapusSiswa('${s.docId}')" style="font-size:10px;padding:2px 7px;border:1px solid #FFCDD2;border-radius:5px;background:#FFEBEE;color:#C62828;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif">Hapus</button>
       </td>
     </tr>`).join('');
   }
 
+  let editSiswaId = null;
+
   window.adminTambahSiswa = function() {
+    editSiswaId = null;
+    document.getElementById('admin-form-siswa-judul').textContent = '➕ Tambah Siswa';
+    ['as-nis','as-nama','as-kelas'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('as-jk').value = 'L';
     document.getElementById('admin-form-siswa').style.display = 'block';
+  };
+
+  window.adminEditSiswa = function(docId) {
+    const s = adminAllSiswa.find(x => x.docId === docId);
+    if (!s) return;
+    editSiswaId = docId;
+    document.getElementById('admin-form-siswa-judul').textContent = '✏️ Edit Siswa — ' + (s.nama||'');
+    document.getElementById('as-nis').value   = s.nis||'';
+    document.getElementById('as-nama').value  = s.nama||'';
+    document.getElementById('as-kelas').value = s.kelas||'';
+    document.getElementById('as-jk').value    = s.jk||'L';
+    const form = document.getElementById('admin-form-siswa');
+    form.style.display = 'block';
+    form.scrollIntoView({ behavior:'smooth' });
+  };
+
+  window.adminBatalSiswa = function() {
+    editSiswaId = null;
+    document.getElementById('admin-form-siswa').style.display = 'none';
   };
 
   window.adminSimpanSiswa = async function() {
@@ -5111,11 +5352,22 @@
     const kelas = document.getElementById('as-kelas').value.trim();
     const jk    = document.getElementById('as-jk').value;
     if (!nis||!nama||!kelas) { tampilToast('⚠ NIS, Nama, dan Kelas wajib diisi'); return; }
-    await addDoc(collection(db,'Data_Siswa'),{nis,nama,kelas,jk});
-    tampilToast('✅ Siswa berhasil ditambahkan');
-    document.getElementById('admin-form-siswa').style.display = 'none';
-    ['as-nis','as-nama','as-kelas'].forEach(id => document.getElementById(id).value = '');
-    await muatDataSiswaAdmin();
+    // Validasi NIS ganda (kecuali dirinya sendiri saat edit)
+    const nisGanda = adminAllSiswa.find(s => s.nis === nis && s.docId !== editSiswaId);
+    if (nisGanda) { tampilToast(`⚠ NIS ${nis} sudah dipakai oleh ${nisGanda.nama}`); return; }
+    try {
+      if (editSiswaId) {
+        await updateDoc(doc(db,'Data_Siswa',editSiswaId),{nis,nama,kelas,jk});
+        tampilToast('✅ Data siswa diperbarui');
+      } else {
+        await addDoc(collection(db,'Data_Siswa'),{nis,nama,kelas,jk});
+        tampilToast('✅ Siswa berhasil ditambahkan');
+      }
+      editSiswaId = null;
+      document.getElementById('admin-form-siswa').style.display = 'none';
+      ['as-nis','as-nama','as-kelas'].forEach(id => document.getElementById(id).value = '');
+      await muatDataSiswaAdmin();
+    } catch(e) { tampilToast('❌ Gagal: ' + e.message); }
   };
 
   window.adminHapusSiswa = async function(docId) {
