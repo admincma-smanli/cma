@@ -12212,14 +12212,21 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
         el.innerHTML = '<div class="empty-state"><div class="ikon">📂</div><p>Belum ada riwayat agenda.<br><small>Mulai isi agenda hari ini.</small></p></div>';
         return;
       }
-      // Sort client-side: terbaru di atas
+      // Sort client-side: terbaru di atas.
+      // Dokumen is_lanjutan (slot ke-2/3 sesi multi-JP) disembunyikan — satu sesi = satu kartu.
       const BULAN = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
       const HARI  = ['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
-      const docs = [...snap.docs].sort((a,b) => {
-        const tA = a.data().timestamp_input || a.data().tanggal || '';
-        const tB = b.data().timestamp_input || b.data().tanggal || '';
-        return tB.localeCompare(tA);
-      });
+      const docs = [...snap.docs]
+        .filter(d => !d.data().is_lanjutan)
+        .sort((a,b) => {
+          const tA = a.data().timestamp_input || a.data().tanggal || '';
+          const tB = b.data().timestamp_input || b.data().tanggal || '';
+          return tB.localeCompare(tA);
+        });
+      if (!docs.length) {
+        el.innerHTML = '<div class="empty-state"><div class="ikon">📂</div><p>Belum ada riwayat agenda.<br><small>Mulai isi agenda hari ini.</small></p></div>';
+        return;
+      }
 
       el.innerHTML = '';
       docs.forEach(d => {
