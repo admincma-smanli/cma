@@ -11382,7 +11382,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
             <div id="qr-scan-wrap" style="display:none;margin-top:10px">
               <video id="qr-video" playsinline style="width:100%;border-radius:10px;max-height:220px;object-fit:cover;background:#000"></video>
               <canvas id="qr-canvas" style="display:none"></canvas>
-              <div id="qr-scan-info" style="font-size:12px;color:var(--abu);text-align:center;margin-top:5px">Arahkan kamera ke QR Code yang ditempel di kelas</div>
+              <div id="qr-scan-info" style="font-size:12px;color:var(--abu);text-align:center;margin-top:5px">Arahkan kamera ke QR di ruang tempat KBM berlangsung (kelas, lab, perpustakaan, dll)</div>
               <button onclick="tutupQRScan()" style="margin-top:6px;width:100%;padding:7px;border-radius:8px;border:1px solid var(--border);background:#F5F5F5;font-size:12px;font-family:inherit;cursor:pointer">✕ Tutup Kamera</button>
             </div>
 
@@ -12079,7 +12079,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     document.getElementById('form-agenda').scrollIntoView({ behavior:'smooth', block:'start' });
 
     // Reset verifikasi setiap kali buka form baru
-    verifGPS = false; verifQR = false;
+    verifGPS = false; verifQR = false; ruangVerif = ''; kelasQRVerif = '';
     ['verif-gps-item','verif-qr-item'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.className = 'verif-item';
@@ -12152,6 +12152,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
         verif_gps:      verifGPS,
         verif_qr:       verifQR,
         verif_kelas_qr: kelasQRVerif,
+        ruang:          ruangVerif,
         verif_override: isOverride,
         metode,
         media_ajar:     media,
@@ -12233,7 +12234,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
         div.className = 'riwayat-item';
         div.innerHTML = `
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-            <span class="riwayat-kelas">${r.kelas||'—'}</span>
+            <span class="riwayat-kelas">${r.kelas||'—'}${r.ruang && r.ruang.replace(/[\s\-_.]/g,'').toUpperCase() !== (r.kelas||'').replace(/[\s\-_.]/g,'').toUpperCase() ? ` <span style="font-size:10px;font-weight:700;background:#E8EAF6;color:#3949AB;padding:1px 7px;border-radius:8px">📍 ${r.ruang}</span>` : ''}</span>
             <span class="riwayat-tgl">${tglLabel}${verif?' · '+verif:''}</span>
           </div>
           <div class="riwayat-mapel">${r.mapel||'—'}</div>
@@ -12427,6 +12428,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
   let verifGPS = false;
   let verifQR  = false;
   let kelasQRVerif = '';
+  let ruangVerif   = ''; // nama ruang tempat KBM berlangsung (dari QR)
   let qrStream = null;
   let qrAnimFrame = null;
 
@@ -12769,8 +12771,8 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     const ikon = document.getElementById('verif-qr-ikon');
 
 
-    // Format: KELAS:X1|SEKOLAH:SMAN5SRL|TA:2025/2026
-    // atau format lain yang mungkin dipakai
+    // Format QR rombel : KELAS:X1|SEKOLAH:SMAN5SRL|TA:2025/2026
+    // Format QR ruang  : RUANG:LAB-IPA|SEKOLAH:SMAN5SRL  (Lab, perpustakaan, dll)
     const parts = {};
     data.split('|').forEach(p => {
       const idx = p.indexOf(':');
@@ -12778,15 +12780,16 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     });
 
     const kelasQR   = parts['KELAS'] || parts['kelas'] || '';
+    const ruangQR   = parts['RUANG'] || parts['ruang'] || '';
     const sekolahQR = parts['SEKOLAH'] || parts['sekolah'] || '';
     const kelasForm = jadwalDipilih?.nama_kelas || jadwalDipilih?.kelas || '';
 
-    // Format wajib: KELAS:X1|SEKOLAH:SMAN5SRL
-    if (!kelasQR || !sekolahQR) {
+    // QR wajib berisi SEKOLAH + (KELAS atau RUANG)
+    if ((!kelasQR && !ruangQR) || !sekolahQR) {
       verifQR = false;
       if (ikon) ikon.textContent = '❌';
       item.className = 'verif-item fail';
-      sub.textContent = 'QR tidak valid — bukan QR ruang kelas';
+      sub.textContent = 'QR tidak valid — bukan QR ruang/kelas sekolah';
       btn.className = 'verif-btn fail';
       btn.textContent = '↺ Scan Ulang';
       document.getElementById('verif-override').style.display = 'block';
@@ -12809,9 +12812,13 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
       return;
     }
 
-    // Cek kecocokan kelas — wajib cocok
-    const normQR   = kelasQR.replace(/[\s\-_]/g,'').toUpperCase();
-    const normForm = kelasForm.replace(/[\s\-_]/g,'').toUpperCase();
+    // ─── Verifikasi hybrid ───
+    // 1) QR rombel yang cocok jadwal → verifikasi klasik.
+    // 2) QR RUANG (lab/perpus/dll) atau QR rombel lain → tetap sah
+    //    (GPS sudah memastikan di lingkungan sekolah), nama ruang dicatat ke agenda.
+    const norm = v => (v||'').replace(/[\s\-_.]/g,'').toUpperCase();
+    const normQR   = norm(kelasQR);
+    const normForm = norm(kelasForm);
 
     if (!normForm) {
       // Jadwal belum dipilih
@@ -12825,22 +12832,27 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
       return;
     }
 
-    if (normQR === normForm) {
-      verifQR = true;
+    verifQR = true;
+    if (ikon) ikon.textContent = '✅';
+    item.className = 'verif-item ok';
+    btn.className   = 'verif-btn done';
+    btn.textContent = '✅ Terverifikasi';
+
+    if (ruangQR) {
+      // KBM di ruang non-rombel (Lab, Perpustakaan, dll)
+      kelasQRVerif = '';
+      ruangVerif   = ruangQR;
+      sub.textContent = 'Mengajar di: ' + ruangQR + ' ✓';
+    } else if (normQR === normForm) {
+      // Di ruang rombel sendiri
       kelasQRVerif = kelasQR;
-      if (ikon) ikon.textContent = '✅';
-      item.className = 'verif-item ok';
+      ruangVerif   = kelasQR;
       sub.textContent = 'Kelas ' + kelasQR + ' ✓ Terverifikasi';
-      btn.className   = 'verif-btn done';
-      btn.textContent = '✅ Terverifikasi';
     } else {
-      verifQR = false;
-      if (ikon) ikon.textContent = '❌';
-      item.className = 'verif-item fail';
-      sub.textContent = 'QR kelas ' + kelasQR + ' ≠ jadwal kelas ' + kelasForm;
-      btn.className = 'verif-btn fail';
-      btn.textContent = '↺ Scan Ulang';
-      document.getElementById('verif-override').style.display = 'block';
+      // QR rombel lain — KBM menumpang di ruang kelas berbeda
+      kelasQRVerif = kelasQR;
+      ruangVerif   = kelasQR;
+      sub.textContent = 'Mengajar di ruang ' + kelasQR + ' (kelas ' + kelasForm + ') ✓';
     }
     window.updateVerifStatus();
   }
