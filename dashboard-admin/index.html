@@ -2035,7 +2035,7 @@
   const auth = getAuth(app);
 
   // Cache
-  let cacheGuru = {}, allAgenda = [], allJadwal = [];
+  let cacheGuru = {}, allAgenda = [], allAgendaRaw = [], allJadwal = [];
   let cachePelanggaran = {};
   let chartTren, chartMetode, chartGuru, chartKehadiran;
 
@@ -2149,7 +2149,10 @@
       orderBy('timestamp_input','desc'),
       limit(500)
     ));
-    allAgenda = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    allAgendaRaw = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    // Dokumen is_lanjutan = penanda slot ke-2/3 pada sesi multi-JP (bukan sesi terpisah).
+    // Untuk tampilan/rekap/ekspor dipakai versi tanpa lanjutan; versi mentah hanya untuk hitungan slot beranda.
+    allAgenda = allAgendaRaw.filter(a => !a.is_lanjutan);
   }
 
   async function muatJadwal() {
@@ -2179,7 +2182,7 @@
 
     // KPI hari ini — hanya jadwal TP/semester aktif sesuai Profil Sekolah
     const jadwalHariIni = allJadwal.filter(j => j.hari === hariIni && cocokTpAktifAdmin(j));
-    const agendaHariIni = allAgenda.filter(a => a.tanggal === tanggal);
+    const agendaHariIni = allAgendaRaw.filter(a => a.tanggal === tanggal); // raw: penanda lanjutan dibutuhkan agar slot ke-2 sesi 2JP terhitung terisi
     const sudahIsi = new Set(agendaHariIni.map(a => a.id_jadwal));
     const total    = jadwalHariIni.length;
     const terisi   = jadwalHariIni.filter(j => sudahIsi.has(j.id)).length;
