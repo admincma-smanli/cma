@@ -2096,6 +2096,7 @@
     await muatJadwal();
     await muatMapel();
     await muatRombel();
+    await muatProfil().catch(() => {}); // TP/semester aktif untuk filter beranda
     renderBeranda();
     isiFilterGuru();
     isiFilterTanggal();
@@ -2125,6 +2126,16 @@
     allJadwal = snap.docs.map(d => ({ id: d.id, ...d.data() }));
   }
 
+  // Cocokkan dokumen jadwal dengan TP/semester aktif di Profil Sekolah.
+  // Dokumen tanpa field TP (legacy) dan kondisi profil belum diisi tetap lolos.
+  function cocokTpAktifAdmin(j) {
+    const tp  = (profilSekolah?.tahun_ajaran || '').trim();
+    const smt = (profilSekolah?.semester || '').trim();
+    if (tp  && j.tahun_ajaran && j.tahun_ajaran !== tp)  return false;
+    if (smt && j.semester     && j.semester     !== smt) return false;
+    return true;
+  }
+
   // ── BERANDA ──
   async function renderBeranda() {
     const tanggal = fmtTgl(sekarang);
@@ -2135,8 +2146,8 @@
     const agendaBulan = allAgenda.filter(a => a.tanggal && a.tanggal.startsWith(bulanIni));
     document.getElementById('kpi-total-agenda').textContent = agendaBulan.length;
 
-    // KPI hari ini
-    const jadwalHariIni = allJadwal.filter(j => j.hari === hariIni);
+    // KPI hari ini — hanya jadwal TP/semester aktif sesuai Profil Sekolah
+    const jadwalHariIni = allJadwal.filter(j => j.hari === hariIni && cocokTpAktifAdmin(j));
     const agendaHariIni = allAgenda.filter(a => a.tanggal === tanggal);
     const sudahIsi = new Set(agendaHariIni.map(a => a.id_jadwal));
     const total    = jadwalHariIni.length;
