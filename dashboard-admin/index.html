@@ -1176,10 +1176,7 @@
               <option value="F">Fase F (Kelas XI-XII)</option>
               <option value="EF">Fase E & F</option>
             </select>
-          </div>
-          <div>
-            <label class="form-lbl">JP per Minggu *</label>
-            <input type="number" class="filter-input" id="fm-jp" placeholder="3" min="1" max="10" style="width:100%;margin-top:4px">
+            <div style="font-size:11px;color:var(--abu);margin-top:4px;">Menentukan kelas mana yang bisa memilih mapel ini di roster — bukan jumlah jam.</div>
           </div>
           <div>
             <label class="form-lbl">Kelompok Mapel</label>
@@ -2366,6 +2363,8 @@
       const mapelHtml = mapelGuru.length
         ? mapelGuru.map(m => `<span class="guru-mapel-tag"><span style="font-family:DM Mono,monospace;font-weight:700">${m.kode_mapel}</span> ${m.nama_mapel}</span>`).join('')
         : '<span style="font-size:10px;color:var(--abu)">Belum ada mapel — atur di menu Mata Pelajaran</span>';
+      const jamMinggu = jamGuruMingguan(id);
+      const jamHtml = jamMinggu === null ? '' : `<span style="font-size:10px;color:var(--abu);display:block;margin-top:2px;">🕐 ${jamMinggu} JP/minggu terjadwal (dari Roster)</span>`;
       return `<div class="guru-card">
         <div class="guru-avatar">${inisial}</div>
         <div style="flex:1;min-width:0;">
@@ -2375,6 +2374,7 @@
           </div>
           <div class="guru-nip">${g.nip||'—'}</div>
           <div class="guru-mapel-list" style="margin-top:4px;">${mapelHtml}</div>
+          ${jamHtml}
           <div class="guru-pin" style="margin-top:3px;">PIN: ${'●'.repeat((g.pin_login||'').length)}</div>
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;">
@@ -2501,6 +2501,50 @@
   // ROSTER — Penyusunan Jadwal
   // ══════════════════════════════════════
   const hariRoster = ['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+
+  // ══════════════════════════════════════
+  // JAM MENGAJAR — dihitung dari Jadwal_Pelajaran (roster), BUKAN dari dokumen Mata_Pelajaran.
+  // rosterData harus sudah dimuat (rosterSudahMuat) sebelum fungsi ini dipakai.
+  // ══════════════════════════════════════
+
+  // Total JP/minggu satu mapel di satu rombel tertentu
+  function jpTerjadwalMapel(mapelId, rombelId) {
+    if (!rosterSudahMuat) return null;
+    let total = 0;
+    hariRoster.forEach(hari => {
+      Object.values(rosterData[hari] || {}).forEach(d => {
+        if (d.id_mapel === mapelId && d.id_rombel === rombelId) total += (d.durasi_jp || 1);
+      });
+    });
+    return total;
+  }
+
+  // Total JP/minggu satu mapel digabung dari semua rombel (untuk kartu di daftar Mata Pelajaran)
+  function jpTerjadwalMapelSemuaKelas(mapelId) {
+    if (!rosterSudahMuat) return null;
+    const perKelas = {}; // { nama_kelas: totalJp }
+    hariRoster.forEach(hari => {
+      Object.values(rosterData[hari] || {}).forEach(d => {
+        if (d.id_mapel !== mapelId) return;
+        const r = allRombel.find(x => x.id === d.id_rombel);
+        const label = r?.nama_kelas || d.id_rombel;
+        perKelas[label] = (perKelas[label] || 0) + (d.durasi_jp || 1);
+      });
+    });
+    return perKelas;
+  }
+
+  // Total JP/minggu seorang guru, dijumlah dari semua rombel & hari
+  function jamGuruMingguan(guruId) {
+    if (!rosterSudahMuat) return null;
+    let total = 0;
+    hariRoster.forEach(hari => {
+      Object.values(rosterData[hari] || {}).forEach(d => {
+        if (d.id_guru === guruId) total += (d.durasi_jp || 1);
+      });
+    });
+    return total;
+  }
   let rosterHariAktif = 'Senin';
   let rosterData = {};      // { hari: { rombelId_slotUrutan: { id_mapel, id_guru, durasi_jp } } }
   let jamBakuData = {};     // { hari: [ {urutan, jenis, jam_mulai, jam_selesai, keterangan} ] }
@@ -2701,7 +2745,7 @@
             }
           </div>
         </div>
-        <span class="roster-mapel-jp">${m.jp_per_minggu||'?'}JP</span>
+        <span class="roster-mapel-jp">${jpTerjadwalMapel(m.id, rombelId) ?? 0}JP terjadwal</span>
       </div>`;
     }).join('') || '<div style="padding:20px;text-align:center;color:var(--abu)">Belum ada mata pelajaran. Tambahkan dulu di menu Mata Pelajaran.</div>';
 
@@ -2906,6 +2950,15 @@
     } catch(e) { allMapel = []; }
   }
 
+  // Ringkasan JP/minggu per kelas untuk satu mapel, dibaca langsung dari roster (bukan field statis)
+  function mapelJpRingkasan(mapelId) {
+    const perKelas = jpTerjadwalMapelSemuaKelas(mapelId);
+    if (perKelas === null) return 'buka menu Roster untuk lihat JP';
+    const entries = Object.entries(perKelas);
+    if (!entries.length) return 'belum terjadwal';
+    return entries.map(([kelas, jp]) => `${kelas}: ${jp}JP`).join(' · ');
+  }
+
   function renderMapelGrid(data) {
     const grid = document.getElementById('mapel-grid');
     if (!data.length) {
@@ -2932,7 +2985,7 @@
         </div>
         <div class="mapel-info">
           ${m.kelompok ? `<span>📂 ${m.kelompok}</span> · ` : ''}
-          <span>⏱ ${m.jp_per_minggu||'?'} JP/minggu</span>
+          <span>⏱ ${mapelJpRingkasan(m.id)}</span>
         </div>
         <div style="margin-top:6px;">${guruNames || '<span style="font-size:11px;color:var(--abu)">Belum ada guru pengampu</span>'}</div>
       </div>`;
@@ -2969,12 +3022,11 @@
       document.getElementById('fm-nama').value     = m?.nama_mapel || '';
       document.getElementById('fm-singkat').value  = m?.nama_singkat || '';
       document.getElementById('fm-fase').value     = m?.fase || '';
-      document.getElementById('fm-jp').value       = m?.jp_per_minggu || '';
       document.getElementById('fm-kelompok').value = m?.kelompok || '';
       fmGuruList = Array.isArray(m?.id_guru_list) ? [...m.id_guru_list] : [];
     } else {
       document.getElementById('form-mapel-judul').textContent = '➕ Tambah Mata Pelajaran';
-      ['fm-kode','fm-nama','fm-singkat','fm-jp'].forEach(i => document.getElementById(i).value = '');
+      ['fm-kode','fm-nama','fm-singkat'].forEach(i => document.getElementById(i).value = '');
       document.getElementById('fm-fase').value = '';
       document.getElementById('fm-kelompok').value = '';
     }
@@ -3035,24 +3087,27 @@
     const kode = document.getElementById('fm-kode').value.trim().toUpperCase();
     const nama = document.getElementById('fm-nama').value.trim();
     const fase = document.getElementById('fm-fase').value;
-    const jp   = parseInt(document.getElementById('fm-jp').value);
     const errEl = document.getElementById('mapel-form-error');
     errEl.textContent = '';
     if (!kode) { errEl.textContent = 'Kode mapel wajib diisi!'; return; }
     if (!nama) { errEl.textContent = 'Nama mapel wajib diisi!'; return; }
     if (!fase) { errEl.textContent = 'Pilih fase!'; return; }
-    if (!jp)   { errEl.textContent = 'JP per minggu wajib diisi!'; return; }
     // Cek duplikat kode
     const kodeAda = allMapel.find(m => m.kode_mapel === kode && m.id !== editMapelId);
     if (kodeAda) { errEl.textContent = `Kode "${kode}" sudah digunakan mapel lain!`; return; }
+    // Cek duplikat nama (satu mapel = satu dokumen, jam per kelas dihitung dari roster, bukan dari dokumen mapel)
+    const namaAda = allMapel.find(m => (m.nama_mapel||'').trim().toLowerCase() === nama.toLowerCase() && m.id !== editMapelId);
+    if (namaAda) { errEl.textContent = `Mapel "${nama}" sudah ada [${namaAda.kode_mapel}]. Jangan buat dokumen baru untuk fase/JP yang berbeda — edit dokumen yang sudah ada dan atur jam per kelas lewat menu Roster.`; return; }
 
     const data = {
       kode_mapel:   kode,
       nama_mapel:   nama,
       nama_singkat: document.getElementById('fm-singkat').value.trim() || nama,
-      fase, jp_per_minggu: jp,
+      fase,
       kelompok:     document.getElementById('fm-kelompok').value,
       id_guru_list: fmGuruList,
+      // Catatan: jp_per_minggu SENGAJA tidak disimpan di sini.
+      // Jam mengajar riil dihitung otomatis dari total durasi_jp di koleksi Jadwal_Pelajaran (lihat jpTerjadwalMapel()).
     };
     try {
       if (editMapelId) {
@@ -3075,17 +3130,21 @@
   // Ekspor & Import Mapel Excel
   window.eksporMapelExcel = function() {
     if (!allMapel.length) { tampilToast('⚠ Belum ada data mapel'); return; }
-    const rows = allMapel.map(m => ({
-      'Kode Mapel':    m.kode_mapel||'',
-      'Nama Mapel':    m.nama_mapel||'',
-      'Nama Singkat':  m.nama_singkat||'',
-      'Fase':          m.fase||'',
-      'JP per Minggu': m.jp_per_minggu||'',
-      'Kelompok':      m.kelompok||'',
-      'Guru Pengampu': (m.id_guru_list||[]).map(id => (cacheGuru[id]||{}).nama_lengkap||id).join(', '),
-    }));
+    const rows = allMapel.map(m => {
+      const perKelas = jpTerjadwalMapelSemuaKelas(m.id);
+      const jpInfo = perKelas === null ? '' : Object.entries(perKelas).map(([k,jp]) => `${k}:${jp}JP`).join(', ');
+      return {
+        'Kode Mapel':    m.kode_mapel||'',
+        'Nama Mapel':    m.nama_mapel||'',
+        'Nama Singkat':  m.nama_singkat||'',
+        'Fase':          m.fase||'',
+        'Kelompok':      m.kelompok||'',
+        'Guru Pengampu': (m.id_guru_list||[]).map(id => (cacheGuru[id]||{}).nama_lengkap||id).join(', '),
+        'JP Terjadwal (info, dari Roster)': jpInfo,
+      };
+    });
     const ws = XLSX.utils.json_to_sheet(rows);
-    ws['!cols'] = [{wch:12},{wch:28},{wch:20},{wch:8},{wch:12},{wch:18},{wch:40}];
+    ws['!cols'] = [{wch:12},{wch:28},{wch:20},{wch:8},{wch:18},{wch:40},{wch:30}];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Mata Pelajaran');
     XLSX.writeFile(wb, 'Mata_Pelajaran_SMAN5_' + fmtTgl(sekarang) + '.xlsx');
@@ -3116,7 +3175,9 @@
           const nama = String(row['Nama Mapel']||'').trim();
           if (!kode || !nama) { gagal.push(`Baris kosong: ${kode||'?'}`); continue; }
           const kodeAda = allMapel.find(m => m.kode_mapel === kode);
-          if (kodeAda) { gagal.push(`"${kode}": sudah ada`); continue; }
+          if (kodeAda) { gagal.push(`"${kode}": kode sudah ada`); continue; }
+          const namaAda = allMapel.find(m => (m.nama_mapel||'').trim().toLowerCase() === nama.toLowerCase());
+          if (namaAda) { gagal.push(`"${nama}": nama mapel sudah ada [${namaAda.kode_mapel}], gunakan Edit bukan baris baru`); continue; }
           // Resolve guru
           const guruRaw = String(row['Guru Pengampu']||'').split(',').map(s => s.trim()).filter(s => s);
           const idGuruList = guruRaw.map(g => kodeGuruMap[g.toUpperCase()] || namaGuruMap[g.toLowerCase()] || null).filter(Boolean);
@@ -3126,9 +3187,9 @@
               kode_mapel:   kode, nama_mapel: nama,
               nama_singkat: String(row['Nama Singkat']||nama),
               fase:         String(row['Fase']||''),
-              jp_per_minggu: parseInt(row['JP per Minggu'])||0,
               kelompok:     String(row['Kelompok']||''),
               id_guru_list: idGuruList,
+              // jp_per_minggu tidak diimpor lagi — jam dihitung dari Jadwal_Pelajaran
             };
             const ref = await addDoc(collection(db, 'Mata_Pelajaran'), data);
             allMapel.push({ id: ref.id, ...data });
@@ -3151,11 +3212,11 @@
           <tr><td><code>Kode Mapel</code></td><td>MTK</td><td>Unik, maks 6 huruf — wajib</td></tr>
           <tr><td><code>Nama Mapel</code></td><td>Matematika</td><td>Nama lengkap — wajib</td></tr>
           <tr><td><code>Nama Singkat</code></td><td>Matematika</td><td>Untuk tampil di grid roster</td></tr>
-          <tr><td><code>Fase</code></td><td>E / F / EF</td><td>E=Kelas X, F=XI-XII</td></tr>
-          <tr><td><code>JP per Minggu</code></td><td>3</td><td>Jam pelajaran per minggu</td></tr>
+          <tr><td><code>Fase</code></td><td>E / F / EF</td><td>E=Kelas X, F=XI-XII — menentukan kelas mana yang boleh memilih mapel ini di roster</td></tr>
           <tr><td><code>Kelompok</code></td><td>Umum A</td><td>Kelompok mata pelajaran</td></tr>
           <tr><td><code>Guru Pengampu</code></td><td>SS, SA</td><td>Kode guru dipisah koma</td></tr>
         </tbody></table>
+        <div class="modal-note">⚠️ Satu mapel = satu dokumen, walau JP-nya beda tiap tingkat kelas (mis. Biologi 5JP di kelas X, 3JP di kelas XI). Jam mengajar per kelas <strong>tidak diinput di sini</strong> — otomatis dihitung dari jadwal yang diisi di menu <strong>Roster</strong>. Jangan buat mapel baru hanya karena JP-nya beda.</div>
         <button class="btn-modal-tutup" onclick="document.getElementById('modal-mapel-info').remove()">Tutup</button>
       </div></div>`;
     document.body.insertAdjacentHTML('beforeend', html);
