@@ -11627,8 +11627,12 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
       getSiswaList: async (teks) => {
         // Pelanggaran bisa terjadi kapan saja, tidak terikat jam/kelas yang sedang diajar —
         // jadi pencarian dibuka ke semua siswa, sama seperti Wali Kelas dan BK.
-        const sSnap = await getDocs(collection(db, 'Data_Siswa'));
-        let list = sSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        // Pakai cache yang sama dengan panel kehadiran — supaya tidak baca ulang Data_Siswa berkali-kali.
+        if (!_cacheDataSiswaGuru) {
+          const sSnap = await getDocs(collection(db, 'Data_Siswa'));
+          _cacheDataSiswaGuru = sSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        }
+        let list = _cacheDataSiswaGuru;
         if (teks) list = list.filter(s => (s.nama || '').toLowerCase().includes(teks.toLowerCase()));
         return list.map(s => ({ id: s.id, nama: s.nama, nis: s.nis, kelas: s.kelas }));
       },
@@ -11713,6 +11717,11 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
 
   // ── JADWAL ──
     // ── KEHADIRAN SISWA PER KELAS ──
+  // Cache Data_Siswa per sesi login guru — koleksi ini dibaca berkali-kali tiap
+  // guru pilih jam pelajaran / tandai izin-sakit, padahal isinya (semua siswa sekolah)
+  // tidak berubah selama sesi berjalan. Baca sekali, pakai berulang.
+  let _cacheDataSiswaGuru = null;
+
   async function muatKehadiranSiswaGuru() {
     if (!guruAktif) return;
     try {
@@ -11721,9 +11730,12 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
       const sumEl = document.getElementById('kehadiran-summary');
       panel.style.display = 'block';
 
-      // 1. Semua siswa hari ini dari Data_Siswa
-      const sSnap = await getDocs(collection(db, 'Data_Siswa'));
-      const semuaSiswa = sSnap.docs.map(d => ({ id:d.id, ...d.data() }));
+      // 1. Semua siswa — dari cache kalau sudah pernah dimuat sesi ini, supaya tidak baca ulang ke Firestore
+      if (!_cacheDataSiswaGuru) {
+        const sSnap = await getDocs(collection(db, 'Data_Siswa'));
+        _cacheDataSiswaGuru = sSnap.docs.map(d => ({ id:d.id, ...d.data() }));
+      }
+      const semuaSiswa = _cacheDataSiswaGuru;
 
       // 2. Presensi hari ini — simpan status per siswa (hadir/izin/sakit), bukan cuma ada/tidak
       const pSnap = await getDocs(query(
