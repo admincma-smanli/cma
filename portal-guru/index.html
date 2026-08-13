@@ -13124,18 +13124,37 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     _renderPickerItems(null, q ? _pickerItems.filter(it => it.label.toLowerCase().includes(q)) : _pickerItems);
   };
 
+  // Escape teks sebelum disisipkan sebagai HTML — mencegah karakter seperti & < > " dari merusak tampilan
+  function _escHtml(s) {
+    return String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  }
+
+  // Item yang sedang dirender di picker — dipakai supaya klik TIDAK perlu menyisipkan
+  // teks materi (yang bisa berisi tanda kutip, mis. "Al-Qur'an") langsung ke atribut onclick,
+  // karena itu gampang rusak kalau ada karakter kutip di judulnya.
+  let _pickerItemsAktif = [];
+
   function _renderPickerItems(valAktif, items) {
     const list = document.getElementById('picker-list');
+    _pickerItemsAktif = items;
     if (!items.length) { list.innerHTML = '<div class="picker-empty">Tidak ada pilihan</div>'; return; }
-    list.innerHTML = items.map(it => `
+    list.innerHTML = items.map((it, idx) => `
       <div class="picker-item${it.done?' done':''}${it.value===valAktif?' selected':''}"
-        onclick="window.pilihPickerItem('${it.value.replace(/'/g,"\'")}','${it.label.replace(/'/g,"\'")}')">
-        ${it.no ? `<span class="pi-no">${it.no}</span>` : ''}
-        <span class="pi-nama">${it.label}</span>
+        onclick="window.pilihPickerItemAt(${idx})">
+        ${it.no ? `<span class="pi-no">${_escHtml(it.no)}</span>` : ''}
+        <span class="pi-nama">${_escHtml(it.label)}</span>
         ${it.done!==undefined ? `<span class="pi-badge">${it.done?'✅ Diajarkan':'○ Baru'}</span>` : ''}
       </div>`).join('');
   }
 
+  window.pilihPickerItemAt = function(idx) {
+    const it = _pickerItemsAktif[idx];
+    if (!it) return;
+    window.tutupPicker();
+    if (_pickerCb) _pickerCb(it.value, it.label);
+  };
+
+  // Tetap disediakan untuk kompatibilitas kalau ada pemanggilan lama
   window.pilihPickerItem = function(val, label) {
     window.tutupPicker();
     if (_pickerCb) _pickerCb(val, label);
