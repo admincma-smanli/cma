@@ -268,14 +268,29 @@ document.getElementById('hari-chip').textContent = HARI_INI;
 // HELPERS
 function toMen(jam){ if(!jam)return 0; const[h,m]=jam.split(':').map(Number); return h*60+m; }
 function menitNow(){ const n=new Date(); return n.getHours()*60+n.getMinutes(); }
+// Tampilan mapel: pakai nama singkat dari Mata_Pelajaran (mis. "Bio"), bukan kode angka mentah (mis. "104")
+function labelMapel(kodeAtauNama){
+  if(!kodeAtauNama) return '—';
+  return mapelSingkat[kodeAtauNama] || kodeAtauNama;
+}
 
 // DATA
-let guru={}, jamBaku=[], rombelList=[], lastData=[];
+let guru={}, jamBaku=[], rombelList=[], lastData=[], mapelSingkat={};
 
 async function init(){
   // Guru
   const gs=await getDocs(collection(db,'Data_Guru'));
   gs.docs.forEach(d=>{guru[d.id]=d.data();});
+
+  // Mata Pelajaran — untuk tampilkan nama singkat, bukan kode angka mentah
+  const ms=await getDocs(collection(db,'Mata_Pelajaran'));
+  ms.docs.forEach(d=>{
+    const v=d.data();
+    const label=v.nama_singkat||v.nama_mapel||'';
+    if(!label) return;
+    if(v.kode_mapel) mapelSingkat[v.kode_mapel]=label;
+    mapelSingkat[d.id]=label; // fallback kalau slot mereferensi id_mapel
+  });
 
   // Jam baku hari ini
   const jbs=await getDocs(query(collection(db,'Jam_Baku'),where('hari','==',HARI_INI)));
@@ -402,7 +417,7 @@ function render(data){
       const s=r.slots.find(sl=>sl.slot_urutan===slotAktif.urutan);
       if(s){
         jamInfo=`<div class="k-jam-info" style="color:#F9A825">⏱ Jam ${slotAktif.urutan} · ${slotAktif.jam_mulai}–${slotAktif.jam_selesai}</div>`;
-        mapelAktif=`<div class="k-mapel-aktif">${s.kode_mapel||s.nama_mapel||'—'}</div>`;
+        mapelAktif=`<div class="k-mapel-aktif">${labelMapel(s.kode_mapel||s.nama_mapel)}</div>`;
         guruAktif=infoGuruSlot(s);
       } else {
         jamInfo=`<div class="k-jam-info" style="color:#546E7A">⏱ Jam ${slotAktif.urutan} · Kosong</div>`;
@@ -412,7 +427,7 @@ function render(data){
       const s=r.slots.find(sl=>sl.slot_urutan===slotNext.urutan);
       if(s){
         jamInfo=`<div class="k-jam-info" style="color:#546E7A">⏭ Jam ${slotNext.urutan} · ${slotNext.jam_mulai}</div>`;
-        mapelAktif=`<div class="k-mapel-aktif" style="color:#90A4AE">${s.kode_mapel||s.nama_mapel||'—'}</div>`;
+        mapelAktif=`<div class="k-mapel-aktif" style="color:#90A4AE">${labelMapel(s.kode_mapel||s.nama_mapel)}</div>`;
         guruAktif=infoGuruSlot(s);
       } else {
         guruAktif=r.slots[0]?infoGuruSlot(r.slots[0]):'—';
@@ -424,7 +439,7 @@ function render(data){
     // Chips mapel BERURUTAN sesuai slot jam
     const chips=r.mapelUrut.map(m=>{
       const aktif=slotAktif&&m.slot.slot_urutan===slotAktif.urutan;
-      return `<span class="mc ${m.terisi?'mc-ok':'mc-no'} ${aktif?'mc-aktif':''}">${m.kode}</span>`;
+      return `<span class="mc ${m.terisi?'mc-ok':'mc-no'} ${aktif?'mc-aktif':''}">${labelMapel(m.kode)}</span>`;
     }).join('');
 
     return `<div class="kartu ${st}">
@@ -543,7 +558,7 @@ const BELL_SRC = {
   mulai:    '../shared/bell/Mulai_Pembelajaran.mp3',
   ganti:    '../shared/bell/Pergantian-Jam.mp3',
   istirahat:'../shared/bell/Intirahat.mp3',
-  masuk:    '../shared/bell/Masuk_Setelah_Istirahat.mp3',
+  masuk:    '../shared/bell/Masuh_Setelah_Istirahat.mp3', // nama file sesuai yang ada di server (ada salah ketik "Masuh")
   sholat:   '../shared/bell/Sholat.mp3',
   pulang:   '../shared/bell/Pulang.mp3',
   apel:     '../shared/bell/Apel.mp3',
