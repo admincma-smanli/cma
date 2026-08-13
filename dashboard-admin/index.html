@@ -5068,11 +5068,17 @@
 
   window.hapusMateri = async function(id) {
     if (!confirm('Hapus materi ini?')) return;
-    await deleteDoc(doc(db, 'Materi_Kurikulum', id));
-    allMateriKurikulum = allMateriKurikulum.filter(m => m.id !== id);
-    tampilToast('✅ Materi dihapus');
-    tampilAuditMateri();
-    filterMateri();
+    try {
+      await deleteDoc(doc(db, 'Materi_Kurikulum', id));
+      // Hanya hapus dari tampilan lokal KALAU hapus di Firestore benar-benar berhasil
+      allMateriKurikulum = allMateriKurikulum.filter(m => m.id !== id);
+      tampilToast('✅ Materi dihapus');
+      tampilAuditMateri();
+      filterMateri();
+    } catch(e) {
+      // Kalau gagal (mis. kuota Firestore habis), beri tahu jelas — jangan diam-diam gagal
+      tampilToast('❌ Gagal hapus: ' + e.message + ' — materi masih ada di database, coba lagi nanti');
+    }
   };
 
   window.importMateriExcel = async function(input) {
