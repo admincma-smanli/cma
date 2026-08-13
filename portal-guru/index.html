@@ -12654,10 +12654,9 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
 
       // Debug: lihat nilai yang tersedia
 
-      // Normalisasi nama kelas untuk filter fase
-      // namaKelas contoh: "X 1", "XI IPA 2", "XII 3"
-      const tingkat = namaKelas ? namaKelas.trim().split(/\s+/)[0].toUpperCase() : '';
-      // tingkat: "X", "XI", "XII"
+      // Normalisasi tingkat kelas aktif — pakai tingkatKelas() yang sama dipakai di seluruh app
+      // (bukan split spasi, karena nama kelas di sini formatnya "XII.1" / "XI.3" pakai titik, bukan spasi)
+      const tkAktif = tingkatKelas(namaKelas || '');
 
       // Filter: is_pokok = true DAN cocok mapel DAN cocok kelas/fase
       // Nama mapel dari jadwal yang dipilih
@@ -12677,12 +12676,11 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
           ));
           if (!mapelOK) return false;
 
-          // Cocokkan kelas/tingkat
-          if (!namaKelas) return true;
-          const mKelas = String(m.kelas || '').toUpperCase().trim();
-          return !mKelas || mKelas === tingkat ||
-                 mKelas === namaKelas.toUpperCase() ||
-                 namaKelas.toUpperCase().startsWith(mKelas);
+          // Cocokkan kelas/tingkat — HARUS sama persis tingkatnya (X / XI / XII),
+          // jangan pakai startsWith karena "XI" dan "XII" sama-sama diawali "X".
+          if (!namaKelas || !tkAktif) return true;
+          const mTingkat = tingkatKelas(m.kelas || '');
+          return !mTingkat || mTingkat === tkAktif;
         })
         .sort((a, b) => {
           const na = parseFloat(String(a.no || '0').replace(/[^0-9.]/g, '')) || 0;
