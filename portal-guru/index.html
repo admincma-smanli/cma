@@ -12647,34 +12647,46 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     } catch(e) { console.warn('Profil_Sekolah tidak dimuat:', e); profilSudahDimuat = true; }
   }
 
+  // Cache sederhana per sesi: kalau guru bolak-balik ke mapel yang sama, tidak perlu baca ulang ke Firestore
+  const _cacheMateriPerMapel = {};
+
   async function muatBankMateri(idMapel, namaKelas) {
     try {
-      const snap = await getDocs(collection(db, 'Materi_Kurikulum'));
-      bankMateri = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      // Query difilter di server berdasarkan id_mapel — JANGAN baca seluruh koleksi Materi_Kurikulum.
+      // Koleksi ini bisa berisi ratusan/ribuan dokumen (semua mapel × semua kelas × pokok+sub),
+      // sementara satu guru cuma butuh materi untuk SATU mapel yang sedang diajar.
+      const namaMapelJadwal = (jadwalDipilih?.nama_mapel || jadwalDipilih?.mapel || '').toLowerCase();
+      const cacheKey = idMapel || namaMapelJadwal;
 
-      // Debug: lihat nilai yang tersedia
+      if (cacheKey && _cacheMateriPerMapel[cacheKey]) {
+        bankMateri = _cacheMateriPerMapel[cacheKey];
+      } else {
+        let docs = [];
+        if (idMapel) {
+          const snap = await getDocs(query(collection(db, 'Materi_Kurikulum'), where('id_mapel', '==', idMapel)));
+          docs = snap.docs;
+        }
+        // Fallback: kalau tidak ada hasil lewat id_mapel (data lama yang belum konsisten id-nya),
+        // coba cocokkan lewat nama mapel — tetap query bertarget, bukan baca semua koleksi.
+        if (!docs.length && namaMapelJadwal) {
+          const namaAsli = jadwalDipilih?.nama_mapel || jadwalDipilih?.mapel || '';
+          if (namaAsli) {
+            const snap2 = await getDocs(query(collection(db, 'Materi_Kurikulum'), where('nama_mapel', '==', namaAsli)));
+            docs = snap2.docs;
+          }
+        }
+        bankMateri = docs.map(d => ({ id: d.id, ...d.data() }));
+        if (cacheKey) _cacheMateriPerMapel[cacheKey] = bankMateri;
+      }
 
       // Normalisasi tingkat kelas aktif — pakai tingkatKelas() yang sama dipakai di seluruh app
       // (bukan split spasi, karena nama kelas di sini formatnya "XII.1" / "XI.3" pakai titik, bukan spasi)
       const tkAktif = tingkatKelas(namaKelas || '');
 
-      // Filter: is_pokok = true DAN cocok mapel DAN cocok kelas/fase
-      // Nama mapel dari jadwal yang dipilih
-      const namaMapelJadwal = (jadwalDipilih?.nama_mapel || jadwalDipilih?.mapel || '').toLowerCase();
-
+      // Filter: is_pokok = true DAN cocok kelas/fase (mapel sudah difilter di query Firestore di atas)
       materiPokok = bankMateri
         .filter(m => {
           if (m.is_pokok !== true) return false; // harus explicitly true
-
-          // Cocokkan mapel — coba id_mapel, nama_mapel, atau mapel
-          const mapelOK = idMapel && (
-            m.id_mapel === idMapel ||
-            m.nama_mapel === idMapel
-          ) || (namaMapelJadwal && (
-            (m.nama_mapel || '').toLowerCase() === namaMapelJadwal ||
-            (m.mapel || '').toLowerCase() === namaMapelJadwal
-          ));
-          if (!mapelOK) return false;
 
           // Cocokkan kelas/tingkat — HARUS sama persis tingkatnya (X / XI / XII),
           // jangan pakai startsWith karena "XI" dan "XII" sama-sama diawali "X".
