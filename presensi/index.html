@@ -10678,6 +10678,8 @@ function renderPanel() {
 // SCAN CARD
 // ══════════════════════════════════════════
 let lastScanNis = '';
+// Cache negatif: NIS yang sudah dicek dan TIDAK ketemu, supaya tidak query berulang (lihat prosesQR)
+const nisGagalDicek = new Map();
 
 function renderScanCard(tipe, nama, kelas, nis, jamISO) {
   const card = $('scan-card');
@@ -10776,9 +10778,18 @@ async function prosesQR(data) {
   // Cari siswa
   let s = allSiswa[nis];
   if(!s) {
+    // Kalau NIS ini sudah pernah dicek dan TIDAK ketemu dalam 30 detik terakhir,
+    // jangan query Firestore lagi — cegah query berulang-ulang tiap frame kamera
+    // berhasil membaca simbol QR yang sama (kartu rusak/kabur atau siswa belum terdaftar).
+    const gagalSebelumnya = nisGagalDicek.get(nis);
+    if (gagalSebelumnya && (Date.now() - gagalSebelumnya) < 30000) {
+      renderScanCard('err','Siswa tidak ditemukan','NIS '+nis+' tidak terdaftar',nis,null);
+      beep('err'); doFlash('err'); return;
+    }
     try {
       const snap=await getDocs(query(collection(db,'Data_Siswa'),where('nis','==',nis)));
       if(!snap.empty){ s=snap.docs[0].data(); allSiswa[nis]=s; }
+      else { nisGagalDicek.set(nis, Date.now()); }
     } catch(e){}
   }
   if(!s) {
