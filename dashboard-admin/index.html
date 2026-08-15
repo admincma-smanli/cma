@@ -1697,6 +1697,7 @@
       <input type="file" id="admin-file-siswa" accept=".xlsx,.xls" style="display:none" onchange="adminImportSiswa(this)">
       <button class="btn-ekspor primary" onclick="adminTambahSiswa()">+ Tambah Siswa</button>
       <button class="btn-ekspor" onclick="adminCetakQRSiswa()">🖨️ Cetak Kartu QR</button>
+      <button class="btn-ekspor" style="background:var(--biru-tua);color:white" onclick="adminEksporQRZip()">📦 Ekspor QR (ZIP per Kelas)</button>
       <button class="btn-ekspor" onclick="adminEksporSiswa()">📊 Excel</button>
     </div>
   </div>
@@ -5580,6 +5581,92 @@
         });
       }, 50);
     });
+  };
+
+  // ── EKSPOR QR SISWA KE ZIP (per kelas, nama file = nama siswa) ──
+  function sanitizeNamaFile(str) {
+    return String(str || '').trim()
+      .replace(/[\\/:*?"<>|]/g, '-')   // karakter terlarang di nama file
+      .replace(/\s+/g, ' ')
+      .slice(0, 80) || 'siswa';
+  }
+
+  function generateQRCanvas(text, size) {
+    // Render QR ke elemen tersembunyi lalu kembalikan elemen <canvas>-nya
+    const container = document.createElement('div');
+    container.style.cssText = 'position:absolute;left:-9999px;top:-9999px';
+    document.body.appendChild(container);
+    new QRCode(container, {
+      text, width: size, height: size,
+      colorDark: '#1A3A5C', colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M
+    });
+    const canvas = container.querySelector('canvas');
+    return { canvas, container };
+  }
+
+  window.adminEksporQRZip = async function() {
+    if (!adminFilteredSiswa.length) { tampilToast('⚠ Tidak ada data siswa untuk diekspor'); return; }
+
+    // Muat library QRCode & JSZip bila belum ada
+    if (typeof QRCode === 'undefined') {
+      await new Promise(resolve => {
+        const s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+        s.onload = resolve; document.head.appendChild(s);
+      });
+    }
+    if (typeof JSZip === 'undefined') {
+      await new Promise(resolve => {
+        const s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+        s.onload = resolve; document.head.appendChild(s);
+      });
+    }
+
+    tampilToast(`⏳ Membuat ${adminFilteredSiswa.length} QR siswa...`);
+
+    const zip = new JSZip();
+    const root = zip.folder('QR_Siswa');
+    const namaTerpakai = {}; // cegah nama file duplikat dalam satu folder kelas
+    let gagal = 0;
+
+    for (const s of adminFilteredSiswa) {
+      const namaKelasFolder = sanitizeNamaFile(s.kelas || 'Tanpa_Kelas');
+      const folderKelas = root.folder(namaKelasFolder);
+
+      let namaFile = sanitizeNamaFile(s.nama || s.nis || 'siswa');
+      const kunciDup = namaKelasFolder + '|' + namaFile;
+      if (namaTerpakai[kunciDup] !== undefined) {
+        namaTerpakai[kunciDup]++;
+        namaFile = `${namaFile} (${s.nis || namaTerpakai[kunciDup]})`;
+      } else {
+        namaTerpakai[kunciDup] = 0;
+      }
+
+      const { canvas, container } = generateQRCanvas(`${s.nis}|${s.nama}|${s.kelas}`, 300);
+      if (canvas) {
+        const base64 = canvas.toDataURL('image/png').split(',')[1];
+        folderKelas.file(`${namaFile}.png`, base64, { base64: true });
+      } else {
+        gagal++;
+      }
+      document.body.removeChild(container);
+    }
+
+    const blob = await zip.generateAsync({ type: 'blob' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `QR_Siswa_${fmtTgl(sekarang)}.zip`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    tampilToast(gagal
+      ? `✅ ${adminFilteredSiswa.length - gagal} QR diekspor, ${gagal} gagal`
+      : `✅ ${adminFilteredSiswa.length} QR siswa berhasil diekspor ke ZIP (per kelas)!`);
   };
 
   // ══════════════════════════════════════════
